@@ -221,9 +221,10 @@ public static class HexGrid
     public static IntVector2 WorldToHex(Vector3 point)
     {
         float q, r;
-        
-        q = (point.x * Mathf.Sqrt(3) / 3f - point.z / 3f) / .5f;
-        r = (point.z * 2 / 3f) / .5f;
+        float size = 1.154701f / 2f;
+
+        q = (point.x * Mathf.Sqrt(3) / 3f - point.z / 3f) / size;
+        r = (point.z * 2 / 3f) / size;
         
         return Round(new Vector2(r, q));
     }
