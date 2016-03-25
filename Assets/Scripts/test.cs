@@ -23,20 +23,36 @@ public class test : MonoBehaviour
     {
         hexes.SetActive(HexGrid.Neighbours(IntVector2.Zero));
 
-        var points = HexGrid.Neighbours(IntVector2.One).Concat(new[] { IntVector2.One }).ToArray();
-
-        yield return new WaitForSeconds(2);
+        var points = Enumerable.Range(0, 4).Select(y => new IntVector2(0, y)).ToArray();
 
         while (true)
         {
             for (int i = 0; i < points.Length; ++i)
             {
-                points[i] = HexGrid.Rotate(points[i], 1);
+                //points[i] = HexGrid.Rotate(points[i], 1);
             }
 
-            hexes.SetActive(points, sort: false);
+            hexes.SetActive(points.Concat(new[] { cursor }), sort: false);
 
             yield return new WaitForSeconds(.125f);
+        }
+    }
+
+    private IntVector2 cursor;
+
+    private void Update()
+    {
+        var plane = new Plane(Vector3.up, Vector3.zero);
+        var ray = Camera.main.ScreenPointToRay(Input.mousePosition);
+        float t;
+
+        if (plane.Raycast(ray, out t))
+        {
+            Vector3 point = ray.GetPoint(t);
+
+            cursor = HexGrid.WorldToHex(point);
+
+            Debug.LogFormat("y = {0}", cursor.y);
         }
     }
 }

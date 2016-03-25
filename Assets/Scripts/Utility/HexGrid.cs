@@ -186,10 +186,46 @@ public static class HexGrid
         return hex;
     }
 
+    public static IntVector2 Round(Vector2 hex)
+    {
+        var rx = Mathf.Round(hex.x);
+        var ry = Mathf.Round(hex.y);
+        var rz = Mathf.Round(-hex.x - hex.y);
+
+        var dx = Mathf.Abs(rx - hex.x);
+        var dy = Mathf.Abs(ry - hex.y);
+        var dz = Mathf.Abs(rz + hex.x + hex.y);
+
+        if (dx > dy && dx > dz)
+        {
+            rx = -ry - rz;
+        }
+        else if (dy > dz)
+        {
+            ry = -rx - rz;
+        }
+        else
+        {
+            rz = -rx - ry;
+        }
+
+        return new IntVector2(rx, ry);
+    }
+
     public static Vector3 HexToWorld(IntVector2 hex)
     {
         return hex.x * xAxis
              + hex.y * yAxis;
+    }
+
+    public static IntVector2 WorldToHex(Vector3 point)
+    {
+        float q, r;
+        
+        q = (point.x * Mathf.Sqrt(3) / 3f - point.z / 3f) / .5f;
+        r = (point.z * 2 / 3f) / .5f;
+        
+        return Round(new Vector2(r, q));
     }
 
     public static IEnumerable<IntVector2> Neighbours(IntVector2 hex)
