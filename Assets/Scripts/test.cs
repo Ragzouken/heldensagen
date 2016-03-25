@@ -10,31 +10,39 @@ public class test : MonoBehaviour
     [SerializeField] private Transform hexParent;
     [SerializeField] private HexView hexPrefab;
 
+    [SerializeField] private SpriteRenderer projectionPrefab;
+    [SerializeField] private Color projectionColor;
+
     private MonoBehaviourPooler<IntVector2, HexView> hexes;
+    private MonoBehaviourPooler<IntVector2, SpriteRenderer> projections;
 
     private void Awake()
     {
         hexes = new MonoBehaviourPooler<IntVector2, HexView>(hexPrefab,
                                                              hexParent,
                                                              (c, v) => v.transform.position = HexGrid.HexToWorld(c));
+
+        projections = new MonoBehaviourPooler<IntVector2, SpriteRenderer>(projectionPrefab,
+                                                                          hexParent,
+                                                                          (c, v) => { v.color = projectionColor; v.transform.position = HexGrid.HexToWorld(c); });
     }
+
+    private IntVector2[] points = new IntVector2[0];
 
     private IEnumerator Start()
     {
         hexes.SetActive(HexGrid.Neighbours(IntVector2.Zero));
 
-        var points = Enumerable.Range(0, 4).Select(y => new IntVector2(0, y)).ToArray();
+        points = Enumerable.Range(0, 4).Select(y => new IntVector2(0, y)).ToArray();
 
         while (true)
         {
             for (int i = 0; i < points.Length; ++i)
             {
-                //points[i] = HexGrid.Rotate(points[i], 1);
+                points[i] = HexGrid.Rotate(points[i], 1);
             }
 
-            hexes.SetActive(points.Concat(new[] { cursor }), sort: false);
-
-            yield return new WaitForSeconds(.125f);
+            yield return new WaitForSeconds(.25f);
         }
     }
 
@@ -51,8 +59,9 @@ public class test : MonoBehaviour
             Vector3 point = ray.GetPoint(t);
 
             cursor = HexGrid.WorldToHex(point);
-
-            Debug.LogFormat("y = {0}", cursor.y);
         }
+
+        hexes.SetActive(new[] { cursor }, sort: false);
+        projections.SetActive(points, sort: false);
     }
 }
