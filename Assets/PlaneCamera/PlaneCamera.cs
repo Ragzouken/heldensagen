@@ -21,6 +21,8 @@ public class PlaneCamera : MonoBehaviour
     public float angleArc = 720;
 
     public Rect worldBounds;
+    public bool worldCircular;
+    public float worldRadius;
 
     [Header("Link Pivot & Zoom")]
     public bool linkPivotToDepth;
@@ -159,8 +161,19 @@ public class PlaneCamera : MonoBehaviour
         pivotTarget = Mathf.Clamp(pivotTarget, minPivot, maxPivot);
         angleTarget = Mathf.Clamp(angleTarget, angleCenter - angleArc * 0.5f, angleCenter + angleArc * 0.5f);
         depthTarget = Mathf.Clamp(depthTarget, minDepth, maxDepth);
-        focusTarget = new Vector2(Mathf.Clamp(focusTarget.x, worldBounds.xMin, worldBounds.xMax),
-                                  Mathf.Clamp(focusTarget.y, worldBounds.yMin, worldBounds.yMax));
+
+        if (worldCircular)
+        {
+            if (focusTarget.magnitude > worldRadius)
+            {
+                focusTarget *= (worldRadius / focusTarget.magnitude);
+            }
+        }
+        else
+        {
+            focusTarget = new Vector2(Mathf.Clamp(focusTarget.x, worldBounds.xMin, worldBounds.xMax),
+                                      Mathf.Clamp(focusTarget.y, worldBounds.yMin, worldBounds.yMax));
+        }
     }
 
     public virtual void SnapToTargets()

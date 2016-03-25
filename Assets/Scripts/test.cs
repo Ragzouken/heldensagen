@@ -27,24 +27,7 @@ public class test : MonoBehaviour
                                                                           (c, v) => { v.color = projectionColor; v.transform.position = HexGrid.HexToWorld(c); });
     }
 
-    private IntVector2[] points = new IntVector2[0];
-
-    private IEnumerator Start()
-    {
-        hexes.SetActive(HexGrid.Neighbours(IntVector2.Zero));
-
-        points = Enumerable.Range(0, 4).Select(y => new IntVector2(0, y)).ToArray();
-
-        while (true)
-        {
-            for (int i = 0; i < points.Length; ++i)
-            {
-                points[i] = HexGrid.Rotate(points[i], 1);
-            }
-
-            yield return new WaitForSeconds(.25f);
-        }
-    }
+    private HashSet<IntVector2> points = new HashSet<IntVector2>();
 
     private IntVector2 cursor;
 
@@ -59,6 +42,15 @@ public class test : MonoBehaviour
             Vector3 point = ray.GetPoint(t);
 
             cursor = HexGrid.WorldToHex(point);
+        }
+
+        if (Input.GetMouseButton(0))
+        {
+            points.Add(cursor);
+        }
+        else if (Input.GetMouseButton(1))
+        {
+            points.Remove(cursor);
         }
 
         hexes.SetActive(new[] { cursor }, sort: false);
