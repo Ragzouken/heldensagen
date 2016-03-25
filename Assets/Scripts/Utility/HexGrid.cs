@@ -130,6 +130,25 @@ public struct IntVector2
 
 public static class HexGrid
 {
+    public static Vector3 xAxis, yAxis, zAxis;
+
+    public static IntVector2[] directions = new IntVector2[]
+    {
+        new IntVector2(+1,  0),
+        new IntVector2(+1, -1),
+        new IntVector2( 0, -1),
+        new IntVector2(-1,  0),
+        new IntVector2(-1, +1),
+        new IntVector2( 0, +1),
+    };
+
+    static HexGrid()
+    {
+        xAxis = Quaternion.AngleAxis( 30, Vector3.up) * Vector3.forward;
+        yAxis = Quaternion.AngleAxis( 90, Vector3.up) * Vector3.forward;
+        zAxis = Quaternion.AngleAxis(150, Vector3.up) * Vector3.forward;
+    }
+
     public static int Distance(IntVector2 a, IntVector2 b)
     {
         IntVector2 c = a - b;
@@ -165,6 +184,20 @@ public static class HexGrid
         hex.y = y;
 
         return hex;
+    }
+
+    public static Vector3 HexToWorld(IntVector2 hex)
+    {
+        return hex.x * xAxis
+             + hex.y * yAxis;
+    }
+
+    public static IEnumerable<IntVector2> Neighbours(IntVector2 hex)
+    {
+        for (int i = 0; i < directions.Length; ++i)
+        {
+            yield return hex + directions[i];
+        }
     }
 }
 
