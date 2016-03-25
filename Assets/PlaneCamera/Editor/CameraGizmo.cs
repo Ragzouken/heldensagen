@@ -36,23 +36,35 @@ public class PlaneCameraGizmo
             }
         }
 
-        Vector3 tl = new Vector3(camera.worldBounds.xMin, 0, camera.worldBounds.yMin);
-        Vector3 bl = new Vector3(camera.worldBounds.xMin, 0, camera.worldBounds.yMax);
-        Vector3 tr = new Vector3(camera.worldBounds.xMax, 0, camera.worldBounds.yMin);
-        Vector3 br = new Vector3(camera.worldBounds.xMax, 0, camera.worldBounds.yMax);
+        Gizmos.DrawLine(camera.transform.position + Vector3.left,    camera.transform.position + Vector3.right);
+        Gizmos.DrawLine(camera.transform.position + Vector3.forward, camera.transform.position + Vector3.back);
 
-        if (camera.transform.parent != null)
+        if (camera.worldCircular)
         {
-            tl = camera.transform.parent.TransformPoint(tl);
-            bl = camera.transform.parent.TransformPoint(bl);
-            tr = camera.transform.parent.TransformPoint(tr);
-            br = camera.transform.parent.TransformPoint(br);
+            //Gizmos.DrawWireSphere(camera.transform.position, camera.worldRadius);
+            Handles.color = Color.magenta;
+            Handles.DrawWireDisc(Vector3.zero, camera.transform.up, camera.worldRadius);
         }
+        else
+        {
+            Vector3 tl = new Vector3(camera.worldBounds.xMin, 0, camera.worldBounds.yMin);
+            Vector3 bl = new Vector3(camera.worldBounds.xMin, 0, camera.worldBounds.yMax);
+            Vector3 tr = new Vector3(camera.worldBounds.xMax, 0, camera.worldBounds.yMin);
+            Vector3 br = new Vector3(camera.worldBounds.xMax, 0, camera.worldBounds.yMax);
 
-        Gizmos.DrawLine(tl, tr);
-        Gizmos.DrawLine(tr, br);
-        Gizmos.DrawLine(br, bl);
-        Gizmos.DrawLine(bl, tl);
+            if (camera.transform.parent != null)
+            {
+                tl = camera.transform.parent.TransformPoint(tl);
+                bl = camera.transform.parent.TransformPoint(bl);
+                tr = camera.transform.parent.TransformPoint(tr);
+                br = camera.transform.parent.TransformPoint(br);
+            }
+
+            Gizmos.DrawLine(tl, tr);
+            Gizmos.DrawLine(tr, br);
+            Gizmos.DrawLine(br, bl);
+            Gizmos.DrawLine(bl, tl);
+        }
 
         if (camera.linkPivotToDepth)
         {
