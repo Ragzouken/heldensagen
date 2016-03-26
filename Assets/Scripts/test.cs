@@ -15,8 +15,10 @@ public class test : MonoBehaviour
         Weakness,
     }
 
+    [SerializeField] private PlaneCamera camera;
     [SerializeField] private Transform hexParent;
     [SerializeField] private HexView hexPrefab;
+    [SerializeField] private SpriteRenderer visionPrefab;
 
     [SerializeField] private SpriteRenderer projectionPrefab;
     [SerializeField] private Color powerColor;
@@ -28,6 +30,7 @@ public class test : MonoBehaviour
 
     private MonoBehaviourPooler<IntVector2, HexView> hexes;
     private MonoBehaviourPooler<IntVector2, SpriteRenderer> projections;
+    private MonoBehaviourPooler<IntVector2, SpriteRenderer> vision;
 
     private void Awake()
     {
@@ -38,6 +41,10 @@ public class test : MonoBehaviour
         projections = new MonoBehaviourPooler<IntVector2, SpriteRenderer>(projectionPrefab,
                                                                           hexParent,
                                                                           (c, v) => { v.transform.position = HexGrid.HexToWorld(c); });
+
+        vision = new MonoBehaviourPooler<IntVector2, SpriteRenderer>(visionPrefab,
+                                                              hexParent,
+                                                              (c, v) => v.transform.position = HexGrid.HexToWorld(c));
 
         string data = System.IO.File.ReadAllText(Application.streamingAssetsPath + "/formation.json.txt");
 
@@ -55,6 +62,8 @@ public class test : MonoBehaviour
 
     private bool edit;
 
+    private Dictionary<IntVector2, float> visions = new Dictionary<IntVector2, float>();
+
     private IEnumerator Start()
     {
         while (true)
@@ -63,14 +72,14 @@ public class test : MonoBehaviour
             //float t = Mathf.PingPong(Time.timeSinceLevelLoad, period) / period;
 
             Vector3 start  = HexGrid.HexToWorld(IntVector2.Zero);
-            Vector3 finish = HexGrid.HexToWorld(IntVector2.Zero);
+            Vector3 finish = HexGrid.HexToWorld(IntVector2.Down);
             var startq = Quaternion.AngleAxis(120, Vector3.up);
             var finishq = Quaternion.AngleAxis(0, Vector3.up);
 
             t = curve.Evaluate(t);
 
             flagship.localPosition = Vector3.Lerp(start, finish, t);
-            flagship.rotation = Quaternion.Slerp(startq, finishq, t);
+            flagship.rotation = Quaternion.Slerp(startq, finishq, t * 1.25f);
 
             yield return null;
         }
@@ -81,6 +90,33 @@ public class test : MonoBehaviour
         var plane = new Plane(Vector3.up, Vector3.zero);
         var ray = Camera.main.ScreenPointToRay(Input.mousePosition);
         float t;
+
+        var points = new[] { flagship.position, HexGrid.HexToWorld(new IntVector2(5, 2)), };
+
+        camera.worldCenter = points.Aggregate((a, b) => a + b) * (1f / points.Length);
+        camera.worldRadius = points.SelectMany(x => points, (x, y) => new { a = x, b = y }).Max(g => (g.a - g.b).magnitude);
+
+        visions.Clear();
+
+        foreach (Vector3 point in points)
+        {
+            foreach (IntVector2 cell in HexGrid.InRange(HexGrid.Round(point), 6))
+            {
+                float alpha;
+
+                if (!visions.TryGetValue(cell, out alpha))
+                {
+                    alpha = 0f;
+                }
+
+                float current = (1 - (point - HexGrid.HexToWorld(cell)).magnitude / 4f) * 0.25f;
+
+                visions[cell] = Mathf.Max(alpha, current);
+            }
+        }
+
+        vision.SetActive(visions.Keys);
+        vision.MapActive((c, v) => { var co = v.color; co.a = visions[c]; v.color = co; } );
 
         if (plane.Raycast(ray, out t))
         {

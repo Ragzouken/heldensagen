@@ -43,7 +43,7 @@ public class PlaneCameraGizmo
         {
             //Gizmos.DrawWireSphere(camera.transform.position, camera.worldRadius);
             Handles.color = Color.magenta;
-            Handles.DrawWireDisc(Vector3.zero, camera.transform.up, camera.worldRadius);
+            Handles.DrawWireDisc(camera.worldCenter, camera.transform.up, camera.worldRadius);
         }
         else
         {
