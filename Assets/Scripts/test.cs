@@ -63,14 +63,14 @@ public class test : MonoBehaviour
             //float t = Mathf.PingPong(Time.timeSinceLevelLoad, period) / period;
 
             Vector3 start  = HexGrid.HexToWorld(IntVector2.Zero);
-            Vector3 finish = HexGrid.HexToWorld(IntVector2.Down);
+            Vector3 finish = HexGrid.HexToWorld(IntVector2.Zero);
             var startq = Quaternion.AngleAxis(120, Vector3.up);
             var finishq = Quaternion.AngleAxis(0, Vector3.up);
 
             t = curve.Evaluate(t);
 
             flagship.localPosition = Vector3.Lerp(start, finish, t);
-            flagship.rotation = Quaternion.Slerp(startq, finishq, t * 1.25f);
+            flagship.rotation = Quaternion.Slerp(startq, finishq, t);
 
             yield return null;
         }
