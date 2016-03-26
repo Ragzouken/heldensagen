@@ -22,6 +22,10 @@ public class test : MonoBehaviour
     [SerializeField] private Color powerColor;
     [SerializeField] private Color weakColor;
 
+    [SerializeField] private Transform flagship;
+    [SerializeField] private float period;
+    [SerializeField] private AnimationCurve curve;
+
     private MonoBehaviourPooler<IntVector2, HexView> hexes;
     private MonoBehaviourPooler<IntVector2, SpriteRenderer> projections;
 
@@ -50,6 +54,27 @@ public class test : MonoBehaviour
     private int rotation;
 
     private bool edit;
+
+    private IEnumerator Start()
+    {
+        while (true)
+        {
+            //float t = (Time.timeSinceLevelLoad % period) / period;
+            float t = Mathf.PingPong(Time.timeSinceLevelLoad, period) / period;
+
+            Vector3 start  = HexGrid.HexToWorld(IntVector2.Zero);
+            Vector3 finish = HexGrid.HexToWorld(IntVector2.Down);
+            var startq = Quaternion.AngleAxis(120, Vector3.up);
+            var finishq = Quaternion.AngleAxis(0, Vector3.up);
+
+            t = curve.Evaluate(t);
+
+            flagship.localPosition = Vector3.Lerp(start, finish, t);
+            flagship.rotation = Quaternion.Slerp(startq, finishq, t * 1.25f);
+
+            yield return null;
+        }
+    }
 
     private void Update()
     {
@@ -105,8 +130,6 @@ public class test : MonoBehaviour
             { Type.Power, powerColor },
             { Type.Weakness, weakColor },
         };
-
-        Debug.Log(rotation);
 
         var form = Translated(Rotated(formation, rotation), cursor);
         if (edit) form = formation;
