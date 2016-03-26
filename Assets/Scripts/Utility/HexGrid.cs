@@ -239,5 +239,16 @@ public static class HexGrid
             yield return hex + directions[i];
         }
     }
+
+    public static IEnumerable<IntVector2> InRange(IntVector2 center, int range)
+    {
+        for (int x = -range; x <= range; ++x)
+        {
+            for (int y = Mathf.Max(-range, -x - range); y <= Mathf.Min(range, -x + range); ++y)
+            {
+                yield return center + new IntVector2(x, y);
+            }
+        }
+    }
 }
 

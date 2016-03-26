@@ -22,6 +22,7 @@ public class PlaneCamera : MonoBehaviour
 
     public Rect worldBounds;
     public bool worldCircular;
+    public Vector3 worldCenter;
     public float worldRadius;
 
     [Header("Link Pivot & Zoom")]
@@ -164,9 +165,11 @@ public class PlaneCamera : MonoBehaviour
 
         if (worldCircular)
         {
-            if (focusTarget.magnitude > worldRadius)
+            Vector2 center = new Vector2(worldCenter.x, worldCenter.z);
+
+            if ((focusTarget - center).magnitude > worldRadius)
             {
-                focusTarget *= (worldRadius / focusTarget.magnitude);
+                focusTarget *= (worldRadius / (focusTarget - center).magnitude);
             }
         }
         else
