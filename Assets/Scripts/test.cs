@@ -5,13 +5,22 @@ using System.Linq;
 using System.Collections;
 using System.Collections.Generic;
 
+using Newtonsoft.Json;
+
 public class test : MonoBehaviour 
 {
+    public enum Type
+    {
+        Power,
+        Weakness,
+    }
+
     [SerializeField] private Transform hexParent;
     [SerializeField] private HexView hexPrefab;
 
     [SerializeField] private SpriteRenderer projectionPrefab;
-    [SerializeField] private Color projectionColor;
+    [SerializeField] private Color powerColor;
+    [SerializeField] private Color weakColor;
 
     private MonoBehaviourPooler<IntVector2, HexView> hexes;
     private MonoBehaviourPooler<IntVector2, SpriteRenderer> projections;
@@ -24,10 +33,14 @@ public class test : MonoBehaviour
 
         projections = new MonoBehaviourPooler<IntVector2, SpriteRenderer>(projectionPrefab,
                                                                           hexParent,
-                                                                          (c, v) => { v.color = projectionColor; v.transform.position = HexGrid.HexToWorld(c); });
+                                                                          (c, v) => { v.transform.position = HexGrid.HexToWorld(c); });
     }
 
+    [JsonArray]
+    private class Formation : Dictionary<IntVector2, Type> { };
+
     private HashSet<IntVector2> points = new HashSet<IntVector2>();
+    private Formation formation = new Formation();
 
     private IntVector2 cursor;
 
@@ -44,16 +57,37 @@ public class test : MonoBehaviour
             cursor = HexGrid.WorldToHex(point);
         }
 
-        if (Input.GetMouseButton(0))
+        if (Input.GetMouseButtonDown(0))
         {
-            points.Add(cursor);
+            Type type;
+
+            if (formation.TryGetValue(cursor, out type))
+            {
+                formation[cursor] = type == Type.Power ? Type.Weakness : Type.Power;
+            }
+            else
+            {
+                formation[cursor] = Type.Power;
+            }
         }
         else if (Input.GetMouseButton(1))
         {
-            points.Remove(cursor);
+            formation.Remove(cursor);
         }
 
+        var colors = new Dictionary<Type, Color>
+        {
+            { Type.Power, powerColor },
+            { Type.Weakness, weakColor },
+        };
+
         hexes.SetActive(new[] { cursor }, sort: false);
-        projections.SetActive(points, sort: false);
+        projections.SetActive(formation.Keys, sort: false);
+        projections.MapActive((c, v) => v.color = colors[formation[c]]);
+
+        if (Input.GetKeyDown(KeyCode.Space))
+        {
+            Debug.LogFormat("{0}", JsonWrapper.Serialise(formation));
+        }
     }
 }
