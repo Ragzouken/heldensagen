@@ -23,6 +23,7 @@ public class test : MonoBehaviour
     [SerializeField] private SpriteRenderer projectionPrefab;
     [SerializeField] private Color powerColor;
     [SerializeField] private Color weakColor;
+    [SerializeField] private Color visionColor;
 
     [SerializeField] private Transform flagship;
     [SerializeField] private float period;
@@ -31,6 +32,7 @@ public class test : MonoBehaviour
     private MonoBehaviourPooler<IntVector2, HexView> hexes;
     private MonoBehaviourPooler<IntVector2, SpriteRenderer> projections;
     private MonoBehaviourPooler<IntVector2, SpriteRenderer> vision;
+    private MonoBehaviourPooler<IntVector2, SpriteRenderer> visionRange;
 
     private void Awake()
     {
@@ -46,6 +48,10 @@ public class test : MonoBehaviour
                                                               hexParent,
                                                               (c, v) => v.transform.position = HexGrid.HexToWorld(c));
 
+        visionRange = new MonoBehaviourPooler<IntVector2, SpriteRenderer>(projectionPrefab,
+                                                              hexParent,
+                                                              (c, v) => { v.transform.position = HexGrid.HexToWorld(c); });
+
         string data = System.IO.File.ReadAllText(Application.streamingAssetsPath + "/formation.json.txt");
 
         formation = JsonWrapper.Deserialise<Formation>(data);
@@ -59,6 +65,7 @@ public class test : MonoBehaviour
 
     private IntVector2 cursor;
     private int rotation;
+    private Vector3 cursorv;
 
     private bool edit;
 
@@ -91,7 +98,7 @@ public class test : MonoBehaviour
         var ray = Camera.main.ScreenPointToRay(Input.mousePosition);
         float t;
 
-        var points = new[] { flagship.position, HexGrid.HexToWorld(new IntVector2(5, 2)), };
+        var points = new[] { flagship.position, HexGrid.HexToWorld(new IntVector2(5, 5)), cursorv };
 
         camera.worldCenter = points.Aggregate((a, b) => a + b) * (1f / points.Length);
         camera.worldRadius = points.SelectMany(x => points, (x, y) => new { a = x, b = y }).Max(g => (g.a - g.b).magnitude);
@@ -100,7 +107,7 @@ public class test : MonoBehaviour
 
         foreach (Vector3 point in points)
         {
-            foreach (IntVector2 cell in HexGrid.InRange(HexGrid.Round(point), 6))
+            foreach (IntVector2 cell in HexGrid.InRange(HexGrid.WorldToHex(point), 6))
             {
                 float alpha;
 
@@ -118,11 +125,16 @@ public class test : MonoBehaviour
         vision.SetActive(visions.Keys);
         vision.MapActive((c, v) => { var co = v.color; co.a = visions[c]; v.color = co; } );
 
+        int vrange = 2;
+
+        visionRange.SetActive(HexGrid.InRange(Vector2.zero, vrange));
+        visionRange.MapActive((c, v) => v.color = visionColor);
+
         if (plane.Raycast(ray, out t))
         {
-            Vector3 point = ray.GetPoint(t);
+            cursorv = ray.GetPoint(t);
 
-            cursor = HexGrid.WorldToHex(point);
+            cursor = HexGrid.WorldToHex(cursorv);
         }
 
         if (Input.GetKeyDown(KeyCode.Backslash))

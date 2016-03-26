@@ -191,9 +191,9 @@ public static class HexGrid
 
     public static IntVector2 Round(Vector2 hex)
     {
-        var rx = Mathf.Round(hex.x);
-        var ry = Mathf.Round(hex.y);
-        var rz = Mathf.Round(-hex.x - hex.y);
+        var rx = Mathf.RoundToInt(hex.x);
+        var ry = Mathf.RoundToInt(hex.y);
+        var rz = Mathf.RoundToInt(-hex.x - hex.y);
 
         var dx = Mathf.Abs(rx - hex.x);
         var dy = Mathf.Abs(ry - hex.y);
