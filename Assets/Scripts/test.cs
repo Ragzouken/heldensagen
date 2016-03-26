@@ -47,6 +47,9 @@ public class test : MonoBehaviour
     private Formation formation = new Formation();
 
     private IntVector2 cursor;
+    private int rotation;
+
+    private bool edit;
 
     private void Update()
     {
@@ -61,22 +64,40 @@ public class test : MonoBehaviour
             cursor = HexGrid.WorldToHex(point);
         }
 
-        if (Input.GetMouseButtonDown(0))
+        if (Input.GetKeyDown(KeyCode.Backslash))
         {
-            Type type;
-
-            if (formation.TryGetValue(cursor, out type))
-            {
-                formation[cursor] = type == Type.Power ? Type.Weakness : Type.Power;
-            }
-            else
-            {
-                formation[cursor] = Type.Power;
-            }
+            edit = !edit;
         }
-        else if (Input.GetMouseButton(1))
+
+        if (Input.GetKeyDown(KeyCode.Comma))
         {
-            formation.Remove(cursor);
+            rotation = (rotation - 1 + 6) % 6;
+        }
+
+        if (Input.GetKeyDown(KeyCode.Period))
+        {
+            rotation = (rotation + 1 + 6) % 6;
+        }
+
+        if (edit)
+        {
+            if (Input.GetMouseButtonDown(0))
+            {
+                Type type;
+
+                if (formation.TryGetValue(cursor, out type))
+                {
+                    formation[cursor] = type == Type.Power ? Type.Weakness : Type.Power;
+                }
+                else
+                {
+                    formation[cursor] = Type.Power;
+                }
+            }
+            else if (Input.GetMouseButton(1))
+            {
+                formation.Remove(cursor);
+            }
         }
 
         var colors = new Dictionary<Type, Color>
@@ -85,9 +106,14 @@ public class test : MonoBehaviour
             { Type.Weakness, weakColor },
         };
 
+        Debug.Log(rotation);
+
+        var form = Translated(Rotated(formation, rotation), cursor);
+        if (edit) form = formation;
+
         hexes.SetActive(new[] { cursor }, sort: false);
-        projections.SetActive(formation.Keys, sort: false);
-        projections.MapActive((c, v) => v.color = colors[formation[c]]);
+        projections.SetActive(form.Keys, sort: false);
+        projections.MapActive((c, v) => v.color = colors[form[c]]);
 
         if (Input.GetKeyDown(KeyCode.Space))
         {
@@ -96,5 +122,29 @@ public class test : MonoBehaviour
             System.IO.File.WriteAllText(Application.streamingAssetsPath + "/formation.json.txt", 
                                         JsonWrapper.Serialise(formation));
         }
+    }
+
+    private Formation Rotated(Formation formation, int rotation)
+    {
+        var rotated = new Formation();
+
+        foreach (var pair in formation)
+        {
+            rotated[HexGrid.Rotate(pair.Key, rotation)] = pair.Value;
+        }
+
+        return rotated;
+    }
+
+    private Formation Translated(Formation formation, IntVector2 translation)
+    {
+        var translated = new Formation();
+
+        foreach (var pair in formation)
+        {
+            translated[pair.Key + translation] = pair.Value;
+        }
+
+        return translated;
     }
 }
