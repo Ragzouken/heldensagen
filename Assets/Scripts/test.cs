@@ -34,6 +34,10 @@ public class test : MonoBehaviour
         projections = new MonoBehaviourPooler<IntVector2, SpriteRenderer>(projectionPrefab,
                                                                           hexParent,
                                                                           (c, v) => { v.transform.position = HexGrid.HexToWorld(c); });
+
+        string data = System.IO.File.ReadAllText(Application.streamingAssetsPath + "/formation.json.txt");
+
+        formation = JsonWrapper.Deserialise<Formation>(data);
     }
 
     [JsonArray]
@@ -88,6 +92,9 @@ public class test : MonoBehaviour
         if (Input.GetKeyDown(KeyCode.Space))
         {
             Debug.LogFormat("{0}", JsonWrapper.Serialise(formation));
+
+            System.IO.File.WriteAllText(Application.streamingAssetsPath + "/formation.json.txt", 
+                                        JsonWrapper.Serialise(formation));
         }
     }
 }
