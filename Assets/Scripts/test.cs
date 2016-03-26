@@ -59,8 +59,8 @@ public class test : MonoBehaviour
     {
         while (true)
         {
-            //float t = (Time.timeSinceLevelLoad % period) / period;
-            float t = Mathf.PingPong(Time.timeSinceLevelLoad, period) / period;
+            float t = (Time.timeSinceLevelLoad % period) / period;
+            //float t = Mathf.PingPong(Time.timeSinceLevelLoad, period) / period;
 
             Vector3 start  = HexGrid.HexToWorld(IntVector2.Zero);
             Vector3 finish = HexGrid.HexToWorld(IntVector2.Down);
