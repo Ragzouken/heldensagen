@@ -72,7 +72,7 @@ public class test : MonoBehaviour
     private Formation formation = new Formation();
 
     private IntVector2 cursor;
-    private int rotation;
+    public int rotation;
     private Vector3 cursorv;
 
     private bool edit;
@@ -270,8 +270,17 @@ public class test : MonoBehaviour
             { Type.Weakness, weakColor },
         };
 
-        var form = Translated(Rotated(formation, rotation), Vector2.zero);
+        var form = Rotated(formation, rotation);
         if (edit) form = formation;
+
+        if (selected != null)
+        {
+            form = Translated(form, selected.position);
+        }
+        else if (!edit)
+        {
+            form.Clear();
+        }
 
         hexes.SetActive(new[] { cursor }, sort: false);
         projections.SetActive(form.Keys, sort: false);
