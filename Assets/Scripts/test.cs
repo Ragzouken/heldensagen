@@ -29,10 +29,14 @@ public class test : MonoBehaviour
     [SerializeField] private float period;
     [SerializeField] private AnimationCurve curve;
 
+    [SerializeField] private FleetView fleetPrefab;
+    [SerializeField] private Transform fleetParent;
+
     private MonoBehaviourPooler<IntVector2, HexView> hexes;
     private MonoBehaviourPooler<IntVector2, SpriteRenderer> projections;
     private MonoBehaviourPooler<IntVector2, SpriteRenderer> vision;
     private MonoBehaviourPooler<IntVector2, SpriteRenderer> visionRange;
+    private MonoBehaviourPooler<Fleet, FleetView> fleets;
 
     private void Awake()
     {
@@ -51,6 +55,8 @@ public class test : MonoBehaviour
         visionRange = new MonoBehaviourPooler<IntVector2, SpriteRenderer>(projectionPrefab,
                                                               hexParent,
                                                               (c, v) => { v.transform.position = HexGrid.HexToWorld(c); });
+
+        fleets = new MonoBehaviourPooler<Fleet, FleetView>(fleetPrefab, fleetParent, (f, v) => v.Setup(f));
 
         string data = System.IO.File.ReadAllText(Application.streamingAssetsPath + "/formation.json.txt");
 
@@ -71,26 +77,43 @@ public class test : MonoBehaviour
 
     private Dictionary<IntVector2, float> visions = new Dictionary<IntVector2, float>();
 
+    private Fleet[] fleets_;
+
     private IEnumerator Start()
     {
+        fleets_ = new Fleet[]
+        {
+            new Fleet
+            {
+                position = IntVector2.Zero,
+                orientation = 1,
+
+                nextPosition = IntVector2.Down,
+                nextOrientation = 0,
+            },
+
+            new Fleet
+            {
+                position = new IntVector2(5, 3),
+                orientation = 1,
+
+                nextPosition = new IntVector2(5, 3) + IntVector2.Left,
+                nextOrientation = 2,
+            },
+        };
+
+        fleets.SetActive(fleets_);
+
         while (true)
         {
             float t = (Time.timeSinceLevelLoad % period) / period;
             //float t = Mathf.PingPong(Time.timeSinceLevelLoad, period) / period;
 
-            Vector3 start  = HexGrid.HexToWorld(IntVector2.Zero);
-            Vector3 finish = HexGrid.HexToWorld(IntVector2.Down);
-            var startq = Quaternion.AngleAxis(120, Vector3.up);
-            var finishq = Quaternion.AngleAxis(0, Vector3.up);
-
             var ot = t;
 
             t = curve.Evaluate(t);
 
-            flagship.localPosition = Vector3.Lerp(start, finish, t);
-            flagship.rotation = Quaternion.Slerp(startq, finishq, t * 1.25f);
-
-             int vrange = 2;
+            int vrange = 2;
 
             var aa = new HashSet<IntVector2>(HexGrid.InRange(Vector2.zero, vrange));
             var bb = new HashSet<IntVector2>(HexGrid.InRange(Vector2.down, vrange));
@@ -102,17 +125,49 @@ public class test : MonoBehaviour
             visionRange.MapActive((c, v) => v.color = Color.Lerp(aa.Contains(c) ? visionColor : blank, 
                                                                  bb.Contains(c) ? visionColor : blank, t));
 
+            fleets.MapActive((f, v) => v.Refresh());
+
             yield return null;
         }
     }
 
+    private float time;
+
     private void Update()
     {
+        {
+            time += Time.deltaTime / period;
+
+            if (time > 1)
+            {
+                float u = time % 1;
+
+                foreach (Fleet fleet in fleets_)
+                {
+                    fleet.position = fleet.nextPosition;
+                    fleet.orientation = fleet.nextOrientation;
+
+                    var n = HexGrid.Neighbours(fleet.position).ToArray();
+
+                    fleet.nextPosition = n[Random.Range(0, n.Length)];
+                    fleet.nextOrientation = Random.Range(0, 6);
+                }
+
+                time -= 1;
+            }
+
+            fleets.MapActive((f, v) =>
+            {
+                f.progress = time;
+                v.Refresh();
+            });
+        }
+
         var plane = new Plane(Vector3.up, Vector3.zero);
         var ray = Camera.main.ScreenPointToRay(Input.mousePosition);
         float t;
 
-        var points = new[] { cursorv, flagship.position, HexGrid.HexToWorld(new IntVector2(5, 3)) };
+        var points = new [] { cursorv }.Concat(fleets.Instances.Select(fleet => fleet.transform.position)).ToArray();
 
         camera.worldCenter = points.Skip(1).Aggregate((a, b) => a + b) * (1f / points.Length);
         camera.worldRadius = points.Skip(1).SelectMany(x => points, (x, y) => new { a = x, b = y }).Max(g => (g.a - g.b).magnitude) * 0.75f;
