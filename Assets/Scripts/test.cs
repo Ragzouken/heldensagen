@@ -88,6 +88,15 @@ public class test : MonoBehaviour
             flagship.localPosition = Vector3.Lerp(start, finish, t);
             flagship.rotation = Quaternion.Slerp(startq, finishq, t * 1.25f);
 
+             int vrange = 2;
+
+            var aa = new HashSet<IntVector2>(HexGrid.InRange(Vector2.zero, vrange));
+            var bb = new HashSet<IntVector2>(HexGrid.InRange(Vector2.down, vrange));
+
+            visionRange.SetActive(aa.Concat(bb), sort: false);
+            visionRange.MapActive((c, v) => v.color = Color.Lerp(aa.Contains(c) ? visionColor : Color.clear, 
+                                                                 bb.Contains(c) ? visionColor : Color.clear, t));
+
             yield return null;
         }
     }
@@ -124,11 +133,6 @@ public class test : MonoBehaviour
 
         vision.SetActive(visions.Keys);
         vision.MapActive((c, v) => { var co = v.color; co.a = visions[c]; v.color = co; } );
-
-        int vrange = 2;
-
-        visionRange.SetActive(HexGrid.InRange(Vector2.zero, vrange));
-        visionRange.MapActive((c, v) => v.color = visionColor);
 
         if (plane.Raycast(ray, out t))
         {
