@@ -106,24 +106,16 @@ public class test : MonoBehaviour
 
         while (true)
         {
-            float t = (Time.timeSinceLevelLoad % period) / period;
-            //float t = Mathf.PingPong(Time.timeSinceLevelLoad, period) / period;
-
-            var ot = t;
-
-            t = curve.Evaluate(t);
-
-            int vrange = 2;
-
-            var aa = new HashSet<IntVector2>(HexGrid.InRange(Vector2.zero, vrange));
-            var bb = new HashSet<IntVector2>(HexGrid.InRange(Vector2.down, vrange));
-
             Color blank = visionColor;
             blank.a = 0;
 
-            visionRange.SetActive(aa.Concat(bb), sort: false);
-            visionRange.MapActive((c, v) => v.color = Color.Lerp(aa.Contains(c) ? visionColor : blank, 
-                                                                 bb.Contains(c) ? visionColor : blank, t));
+            var currVision = new HashSet<IntVector2>(fleets_.SelectMany(f => HexGrid.InRange(f.position, f.visionRange)));
+            var nextVision = new HashSet<IntVector2>(fleets_.SelectMany(f => HexGrid.InRange(f.nextPosition, f.visionRange)));
+
+            visionRange.SetActive(currVision.Concat(nextVision), sort: false);
+            visionRange.MapActive((c, v) => v.color = Color.Lerp(currVision.Contains(c) ? visionColor : blank, 
+                                                                 nextVision.Contains(c) ? visionColor : blank, 
+                                                                 time));
 
             fleets.MapActive((f, v) => v.Refresh());
 
@@ -132,9 +124,13 @@ public class test : MonoBehaviour
     }
 
     private float time;
+    private bool run;
 
     private void Update()
     {
+        if (Input.GetKeyDown(KeyCode.Return)) run = true;
+
+        if (run)
         {
             time += Time.deltaTime / period;
 
@@ -154,6 +150,8 @@ public class test : MonoBehaviour
                 }
 
                 time -= 1;
+
+                run = false;
             }
 
             fleets.MapActive((f, v) =>
@@ -187,7 +185,7 @@ public class test : MonoBehaviour
                     alpha = 0f;
                 }
 
-                float current = (1 - (point - HexGrid.HexToWorld(cell)).magnitude / 3f) * 0.25f;
+                float current = (1 - (point - HexGrid.HexToWorld(cell)).magnitude / 4f) * 0.25f;
 
                 visions[cell] = Mathf.Max(alpha, current);
             }

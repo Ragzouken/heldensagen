@@ -82,4 +82,5 @@ public class Fleet
     public int nextOrientation;
 
     public float progress;
+    public int visionRange = 2;
 }
