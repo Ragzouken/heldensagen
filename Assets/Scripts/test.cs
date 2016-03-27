@@ -83,6 +83,8 @@ public class test : MonoBehaviour
             var startq = Quaternion.AngleAxis(120, Vector3.up);
             var finishq = Quaternion.AngleAxis(0, Vector3.up);
 
+            var ot = t;
+
             t = curve.Evaluate(t);
 
             flagship.localPosition = Vector3.Lerp(start, finish, t);
@@ -93,9 +95,12 @@ public class test : MonoBehaviour
             var aa = new HashSet<IntVector2>(HexGrid.InRange(Vector2.zero, vrange));
             var bb = new HashSet<IntVector2>(HexGrid.InRange(Vector2.down, vrange));
 
+            Color blank = visionColor;
+            blank.a = 0;
+
             visionRange.SetActive(aa.Concat(bb), sort: false);
-            visionRange.MapActive((c, v) => v.color = Color.Lerp(aa.Contains(c) ? visionColor : Color.clear, 
-                                                                 bb.Contains(c) ? visionColor : Color.clear, t));
+            visionRange.MapActive((c, v) => v.color = Color.Lerp(aa.Contains(c) ? visionColor : blank, 
+                                                                 bb.Contains(c) ? visionColor : blank, t));
 
             yield return null;
         }
@@ -107,7 +112,7 @@ public class test : MonoBehaviour
         var ray = Camera.main.ScreenPointToRay(Input.mousePosition);
         float t;
 
-        var points = new[] { flagship.position, HexGrid.HexToWorld(new IntVector2(5, 5)), cursorv };
+        var points = new[] { flagship.position, HexGrid.HexToWorld(new IntVector2(5, 3)), cursorv };
 
         camera.worldCenter = points.Aggregate((a, b) => a + b) * (1f / points.Length);
         camera.worldRadius = points.SelectMany(x => points, (x, y) => new { a = x, b = y }).Max(g => (g.a - g.b).magnitude);
