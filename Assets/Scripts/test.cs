@@ -32,6 +32,8 @@ public class test : MonoBehaviour
     [SerializeField] private FleetView fleetPrefab;
     [SerializeField] private Transform fleetParent;
 
+    [SerializeField] private FleetMenu menu;
+
     private MonoBehaviourPooler<IntVector2, HexView> hexes;
     private MonoBehaviourPooler<IntVector2, SpriteRenderer> projections;
     private MonoBehaviourPooler<IntVector2, SpriteRenderer> vision;
@@ -212,7 +214,8 @@ public class test : MonoBehaviour
 
             cursor = HexGrid.WorldToHex(cursorv);
 
-            if (Input.GetMouseButtonDown(0))
+            if (Input.GetMouseButtonDown(0) 
+             && !UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject())
             {
                 selected = fleets_.FirstOrDefault(fleet => fleet.position == cursor);
             }
@@ -252,6 +255,13 @@ public class test : MonoBehaviour
             {
                 formation.Remove(cursor);
             }
+        }
+
+        menu.gameObject.SetActive(selected != null);
+
+        if (selected != null)
+        {
+            menu.transform.position = HexGrid.HexToWorld(selected.position);
         }
 
         var colors = new Dictionary<Type, Color>
