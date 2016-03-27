@@ -168,7 +168,7 @@ public class test : MonoBehaviour
         var points = new [] { cursorv }.Concat(fleets.Instances.Select(fleet => fleet.transform.position)).ToArray();
 
         camera.worldCenter = points.Skip(1).Aggregate((a, b) => a + b) * (1f / points.Length);
-        camera.worldRadius = points.Skip(1).SelectMany(x => points, (x, y) => new { a = x, b = y }).Max(g => (g.a - g.b).magnitude) * 0.75f;
+        camera.worldRadius = points.Skip(1).SelectMany(x => points.Skip(1), (x, y) => new { a = x, b = y }).Max(g => (g.a - g.b).magnitude);
 
         visions.Clear();
 
