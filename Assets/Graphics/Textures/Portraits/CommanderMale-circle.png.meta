@@ -1,6 +1,6 @@
 fileFormatVersion: 2
-guid: c3851e4e0bb993d4eba2e03aa9d331fc
-timeCreated: 1459097910
+guid: bc836afb6d5b3f142b4156ad47e741cb
+timeCreated: 1459099988
 licenseType: Free
 TextureImporter:
   fileIDToRecycleName: {}
@@ -32,31 +32,25 @@ TextureImporter:
     filterMode: -1
     aniso: 16
     mipBias: -1
-    wrapMode: 0
+    wrapMode: 1
   nPOTScale: 0
   lightmap: 0
   rGBM: 0
   compressionQuality: 50
   allowsAlphaSplitting: 0
-  spriteMode: 3
+  spriteMode: 1
   spriteExtrude: 1
   spriteMeshType: 1
   alignment: 0
   spritePivot: {x: 0.5, y: 0.5}
   spriteBorder: {x: 0, y: 0, z: 0, w: 0}
-  spritePixelsToUnits: 512
+  spritePixelsToUnits: 100
   alphaIsTransparency: 1
-  textureType: 5
+  textureType: 8
   buildTargetSettings: []
   spriteSheet:
     sprites: []
-    outline:
-    - - {x: 256, y: 512}
-      - {x: 477.7025, y: 384}
-      - {x: 477.7025, y: 127.999985}
-      - {x: 255.99998, y: 0}
-      - {x: 34.297485, y: 128.00003}
-      - {x: 34.297485, y: 383.99997}
+    outline: []
   spritePackingTag: 
   userData: 
   assetBundleName: 

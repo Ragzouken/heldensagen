@@ -79,6 +79,8 @@ public class test : MonoBehaviour
 
     private Fleet[] fleets_;
 
+    private Fleet selected;
+
     private IEnumerator Start()
     {
         fleets_ = new Fleet[]
@@ -125,6 +127,16 @@ public class test : MonoBehaviour
 
     private float time;
     private bool run;
+
+    public void RotateLeft()
+    {
+        rotation = (rotation - 1 + 6) % 6;
+    }
+
+    public void RotateRight()
+    { 
+        rotation = (rotation + 1 + 6) % 6;
+    }
 
     private void Update()
     {
@@ -199,6 +211,11 @@ public class test : MonoBehaviour
             cursorv = ray.GetPoint(t);
 
             cursor = HexGrid.WorldToHex(cursorv);
+
+            if (Input.GetMouseButtonDown(0))
+            {
+                selected = fleets_.FirstOrDefault(fleet => fleet.position == cursor);
+            }
         }
 
         if (Input.GetKeyDown(KeyCode.Backslash))
