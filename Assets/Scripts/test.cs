@@ -112,16 +112,18 @@ public class test : MonoBehaviour
         var ray = Camera.main.ScreenPointToRay(Input.mousePosition);
         float t;
 
-        var points = new[] { flagship.position, HexGrid.HexToWorld(new IntVector2(5, 3)), cursorv };
+        var points = new[] { cursorv, flagship.position, HexGrid.HexToWorld(new IntVector2(5, 3)) };
 
-        camera.worldCenter = points.Aggregate((a, b) => a + b) * (1f / points.Length);
-        camera.worldRadius = points.SelectMany(x => points, (x, y) => new { a = x, b = y }).Max(g => (g.a - g.b).magnitude);
+        camera.worldCenter = points.Skip(1).Aggregate((a, b) => a + b) * (1f / points.Length);
+        camera.worldRadius = points.Skip(1).SelectMany(x => points, (x, y) => new { a = x, b = y }).Max(g => (g.a - g.b).magnitude) * 0.75f;
 
         visions.Clear();
 
         foreach (Vector3 point in points)
         {
-            foreach (IntVector2 cell in HexGrid.InRange(HexGrid.WorldToHex(point), 6))
+            //Vector3 point = cursorv;
+
+            foreach (IntVector2 cell in HexGrid.InRange(HexGrid.WorldToHex(point), 5))
             {
                 float alpha;
 
@@ -130,7 +132,7 @@ public class test : MonoBehaviour
                     alpha = 0f;
                 }
 
-                float current = (1 - (point - HexGrid.HexToWorld(cell)).magnitude / 4f) * 0.25f;
+                float current = (1 - (point - HexGrid.HexToWorld(cell)).magnitude / 3f) * 0.25f;
 
                 visions[cell] = Mathf.Max(alpha, current);
             }
@@ -188,7 +190,7 @@ public class test : MonoBehaviour
             { Type.Weakness, weakColor },
         };
 
-        var form = Translated(Rotated(formation, rotation), cursor);
+        var form = Translated(Rotated(formation, rotation), Vector2.zero);
         if (edit) form = formation;
 
         hexes.SetActive(new[] { cursor }, sort: false);

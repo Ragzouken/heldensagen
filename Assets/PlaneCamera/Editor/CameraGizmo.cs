@@ -39,6 +39,9 @@ public class PlaneCameraGizmo
         Gizmos.DrawLine(camera.transform.position + Vector3.left,    camera.transform.position + Vector3.right);
         Gizmos.DrawLine(camera.transform.position + Vector3.forward, camera.transform.position + Vector3.back);
 
+        Gizmos.DrawLine(camera.worldCenter + Vector3.left,    camera.worldCenter + Vector3.right);
+        Gizmos.DrawLine(camera.worldCenter + Vector3.forward, camera.worldCenter + Vector3.back);
+
         if (camera.worldCircular)
         {
             //Gizmos.DrawWireSphere(camera.transform.position, camera.worldRadius);
