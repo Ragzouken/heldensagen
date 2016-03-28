@@ -57,6 +57,29 @@ public class FleetMenu : MonoBehaviour
         return list;
     }
 
+    private IEnumerable<HexItem> GetSquadrons()
+    {
+        var neighbours = HexGrid.Neighbours(IntVector2.Zero).ToArray();
+
+        var list = new List<HexItem>();
+
+        for (int i = 0; i < Mathf.Min(fleet.squadrons.Length, 6); ++i)
+        {
+            Squadron squadron = fleet.squadrons[i];
+
+            if (squadron == null) continue;
+
+            list.Add(new HexItem
+            {
+                cell = neighbours[i],
+                icon = squadron.sprite,
+                active = false,
+            });
+        }
+
+        return list;
+    }
+
     public void SetCommand()
     {
         var command = new HexItem
@@ -84,6 +107,6 @@ public class FleetMenu : MonoBehaviour
             action = SetCommand,
         };
 
-        icons.SetActive(fleet);
+        icons.SetActive(new[] { fleet }.Concat(GetSquadrons()));
     }
 }
