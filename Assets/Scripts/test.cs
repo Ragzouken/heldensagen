@@ -105,6 +105,14 @@ public class test : MonoBehaviour
 
     private Fleet selected;
 
+    private Squadron TestSquad()
+    {
+        return new Squadron
+        {
+            sprite = commanderSprite2,
+        };
+    }
+
     private IEnumerator Start()
     {
         fleets_ = new Fleet[]
@@ -120,6 +128,8 @@ public class test : MonoBehaviour
                 commanderSprite = commanderSprite2,
                 flagshipSprite = flagshipSprite,
 
+                squadrons = Enumerable.Range(0, 3).Select(i => TestSquad()).ToArray(),
+
                 formation = formation,
                 formations = formations.ToArray(),
             },
@@ -134,6 +144,8 @@ public class test : MonoBehaviour
 
                 commanderSprite = commanderSprite,
                 flagshipSprite = flagshipSprite,
+
+                squadrons = Enumerable.Range(0, 3).Select(i => TestSquad()).ToArray(),
 
                 formation = formation,
                 formations = formations.ToArray(),

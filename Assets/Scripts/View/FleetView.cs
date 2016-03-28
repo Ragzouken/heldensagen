@@ -73,6 +73,11 @@ public class FleetView : MonoBehaviour
     }
 }
 
+public class Squadron
+{
+    public Sprite sprite;
+}
+
 public class Fleet
 {
     public IntVector2 position;
@@ -86,6 +91,8 @@ public class Fleet
 
     public Sprite commanderSprite;
     public Sprite flagshipSprite;
+
+    public Squadron[] squadrons = new Squadron[6];
 
     public Formation[] formations = new Formation[6];
     public Formation formation;
