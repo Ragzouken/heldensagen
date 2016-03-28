@@ -38,10 +38,17 @@ public class test : MonoBehaviour
     [SerializeField] private Sprite flagshipSprite;
 
     private MonoBehaviourPooler<IntVector2, HexView> hexes;
-    private MonoBehaviourPooler<IntVector2, SpriteRenderer> projections;
+    private MonoBehaviourPooler<Projection, SpriteRenderer> projections;
     private MonoBehaviourPooler<IntVector2, SpriteRenderer> vision;
     private MonoBehaviourPooler<IntVector2, SpriteRenderer> visionRange;
     private MonoBehaviourPooler<Fleet, FleetView> fleets;
+
+    private class Projection
+    {
+        public IntVector2 cell;
+        public Type type;
+        public float mult;
+    }
 
     private void Awake()
     {
@@ -49,9 +56,9 @@ public class test : MonoBehaviour
                                                              hexParent,
                                                              (c, v) => v.transform.localPosition = HexGrid.HexToWorld(c));
 
-        projections = new MonoBehaviourPooler<IntVector2, SpriteRenderer>(projectionPrefab,
+        projections = new MonoBehaviourPooler<Projection, SpriteRenderer>(projectionPrefab,
                                                                           hexParent,
-                                                                          (c, v) => { v.transform.localPosition = HexGrid.HexToWorld(c); });
+                                                                          (p, v) => { v.transform.localPosition = HexGrid.HexToWorld(p.cell); });
 
         vision = new MonoBehaviourPooler<IntVector2, SpriteRenderer>(visionPrefab,
                                                               hexParent,
@@ -293,46 +300,29 @@ public class test : MonoBehaviour
             { Type.Conflict, conflictColor },
         };
 
+        var highlight = fleets_.FirstOrDefault(fleet => fleet.position == cursor) ?? selected;
+
         var allforms = fleets_.Where(fleet => fleet.formation != null)
-                              .Select(fleet => Translated(Rotated(fleet.formation, fleet.nextOrientation), fleet.position));
+                              .Select(fleet => new { form = Translated(Rotated(fleet.formation, fleet.nextOrientation), fleet.position), fleet = fleet })
+                              .SelectMany(pair => pair.form.Select(p => new Projection { cell = p.Key, type = p.Value, mult = pair.fleet == highlight ? 1 : 0.75f } ))
+                              .ToArray();
 
-        { 
-            var current = new Formation();
-
-            foreach (var formation in allforms)
-            {
-                foreach (var pair in formation)
-                {
-                    Type existing;
-
-                    if (current.TryGetValue(pair.Key, out existing))
-                    {
-                        bool conflict = (existing == Type.Power && pair.Value == Type.Weakness)
-                                     || (existing == Type.Weakness && pair.Value == Type.Power)
-                                     || existing == Type.Conflict;
-
-                        current[pair.Key] = conflict ? Type.Conflict : pair.Value;
-                    }
-                    else
-                    {
-                        current[pair.Key] = pair.Value;
-                    }
-                }
-            }
-
+        {
             hexes.SetActive(new[] { cursor }, sort: false);
 
             if (!edit)
             {
-                projections.SetActive(current.Keys, sort: false);
-                projections.MapActive((c, v) => v.color = colors[current[c]]);
+                projections.SetActive(allforms, sort: false);
             }
             else
             {
-                projections.SetActive(formation.Keys, sort: false);
-                projections.MapActive((c, v) => v.color = colors[formation[c]]);
+                var p = formation.Select(p_ => new Projection { cell = p_.Key, type = p_.Value, mult = 1 });
+
+                projections.SetActive(p, sort: false);
             }
-            }
+
+            projections.MapActive((p, v) => v.color = colors[p.type] * p.mult);
+        }
 
         if (Input.GetKeyDown(KeyCode.Space))
         {
