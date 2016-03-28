@@ -71,7 +71,7 @@ public class PlaneCamera : MonoBehaviour
 
         protected set
         {
-            focusTransform.position = new Vector3(value.x, 0, value.y);
+            focusTransform.position = new Vector3(value.x, 0.5f, value.y);
         }
     }
 

@@ -175,7 +175,7 @@ public class test : MonoBehaviour
             });
         }
 
-        var plane = new Plane(Vector3.up, Vector3.up * -0.5f);
+        var plane = new Plane(Vector3.up, Vector3.zero);
         var ray = Camera.main.ScreenPointToRay(Input.mousePosition);
         float t;
 
