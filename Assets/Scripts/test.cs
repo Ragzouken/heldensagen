@@ -33,6 +33,8 @@ public class test : MonoBehaviour
     [SerializeField] private Transform fleetParent;
 
     [SerializeField] private FleetMenu menu;
+    [SerializeField] private Sprite commanderSprite;
+    [SerializeField] private Sprite flagshipSprite;
 
     private MonoBehaviourPooler<IntVector2, HexView> hexes;
     private MonoBehaviourPooler<IntVector2, SpriteRenderer> projections;
@@ -65,9 +67,6 @@ public class test : MonoBehaviour
         formation = JsonWrapper.Deserialise<Formation>(data);
     }
 
-    [JsonArray]
-    private class Formation : Dictionary<IntVector2, Type> { };
-
     private HashSet<IntVector2> points = new HashSet<IntVector2>();
     private Formation formation = new Formation();
 
@@ -94,6 +93,9 @@ public class test : MonoBehaviour
 
                 nextPosition = IntVector2.Down,
                 nextOrientation = 0,
+                
+                commanderSprite = commanderSprite,
+                flagshipSprite = flagshipSprite,
             },
 
             new Fleet
@@ -103,9 +105,14 @@ public class test : MonoBehaviour
 
                 nextPosition = new IntVector2(5, 3) + IntVector2.Left,
                 nextOrientation = 2,
+
+                commanderSprite = commanderSprite,
+                flagshipSprite = flagshipSprite,
             },
         };
 
+
+        foreach (var fleet in fleets_) fleet.formations[0] = formation;
         fleets.SetActive(fleets_, sort: false);
 
         while (true)
@@ -160,7 +167,7 @@ public class test : MonoBehaviour
                     var n = HexGrid.Neighbours(fleet.position).ToArray();
 
                     fleet.nextPosition = n[Random.Range(0, n.Length)];
-                    fleet.nextOrientation = Random.Range(0, 6);
+                    fleet.nextOrientation = rotation;
                 }
 
                 time -= 1;
@@ -218,6 +225,7 @@ public class test : MonoBehaviour
              && !UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject())
             {
                 selected = fleets_.FirstOrDefault(fleet => fleet.position == cursor);
+                if (selected != null) menu.Setup(selected);
             }
         }
 
@@ -261,7 +269,7 @@ public class test : MonoBehaviour
 
         if (selected != null)
         {
-            menu.transform.position = HexGrid.HexToWorld(selected.position);
+            menu.transform.localPosition = HexGrid.HexToWorld(selected.position);
         }
 
         var colors = new Dictionary<Type, Color>
@@ -319,3 +327,6 @@ public class test : MonoBehaviour
         return translated;
     }
 }
+
+[JsonArray]
+public class Formation : Dictionary<IntVector2, test.Type> { };

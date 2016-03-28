@@ -30,6 +30,13 @@ public class HexIcon : MonoBehaviour, IDragHandler
 
     public test t;
 
+    private HexItem item;
+
+    private void Awake()
+    {
+        button.onClick.AddListener(() => item.action());
+    }
+
     private void Update()
     {
         if (follow == Follow.Camera)
@@ -43,6 +50,16 @@ public class HexIcon : MonoBehaviour, IDragHandler
         }
     }
 
+    public void Setup(HexItem item)
+    {
+        this.item = item;
+
+        iconImage.sprite = item.icon;
+        button.interactable = item.active;
+
+        transform.localPosition = HexGrid.HexToWorld(item.cell);
+    }
+
     void IDragHandler.OnDrag(PointerEventData eventData)
     {
         var plane = new Plane(Vector3.up, Vector3.zero);
@@ -53,7 +70,7 @@ public class HexIcon : MonoBehaviour, IDragHandler
         plane.Raycast(ray1, out t1);
         plane.Raycast(ray2, out t2);
 
-        Vector3 d = ray1.GetPoint(t1) - ray2.GetPoint(t2);
+        Vector3 d = ray1.GetPoint(t1) - transform.parent.position; //ray2.GetPoint(t2);
         Vector2 vector = new Vector2(d.x, d.z);
 
         float angle = Mathf.Atan2(vector.y, vector.x);
@@ -61,4 +78,12 @@ public class HexIcon : MonoBehaviour, IDragHandler
 
         t.rotation = rotation;
     }
+}
+
+public class HexItem
+{
+    public IntVector2 cell;
+    public Sprite icon;
+    public Action action;
+    public bool active;
 }

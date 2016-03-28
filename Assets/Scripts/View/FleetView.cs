@@ -83,4 +83,9 @@ public class Fleet
 
     public float progress;
     public int visionRange = 2;
+
+    public Sprite commanderSprite;
+    public Sprite flagshipSprite;
+
+    public Formation[] formations = new Formation[6];
 }
