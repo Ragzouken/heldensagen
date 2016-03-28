@@ -57,7 +57,7 @@ TextureImporter:
       - {x: 255.99998, y: 0}
       - {x: 34.297485, y: 128.00003}
       - {x: 34.297485, y: 383.99997}
-  spritePackingTag: 
+  spritePackingTag: ui
   userData: 
   assetBundleName: 
   assetBundleVariant: 
