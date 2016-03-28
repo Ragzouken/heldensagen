@@ -88,4 +88,13 @@ public class Fleet
     public Sprite flagshipSprite;
 
     public Formation[] formations = new Formation[6];
+    public Formation formation;
+
+    public void ChooseFormation(Formation formation, int orientation)
+    {
+        this.formation = formation;
+        nextOrientation = orientation;
+
+        nextPosition = HexGrid.Rotate(IntVector2.Up, orientation) + position;
+    }
 }

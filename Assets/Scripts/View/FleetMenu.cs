@@ -18,7 +18,7 @@ public class FleetMenu : MonoBehaviour
     {
         icons = new MonoBehaviourPooler<HexItem, HexIcon>(iconPrefab,
                                                           transform,
-                                                          (c, i) => i.Setup(c));
+                                                          (c, i) => { i.Setup(c); i.fleet = fleet; });
     }
 
     public void Setup(Fleet fleet)

@@ -13,6 +13,7 @@ public class test : MonoBehaviour
     {
         Power,
         Weakness,
+        Conflict,
     }
 
     [SerializeField] private PlaneCamera camera;
@@ -23,9 +24,9 @@ public class test : MonoBehaviour
     [SerializeField] private SpriteRenderer projectionPrefab;
     [SerializeField] private Color powerColor;
     [SerializeField] private Color weakColor;
+    [SerializeField] private Color conflictColor;
     [SerializeField] private Color visionColor;
 
-    [SerializeField] private Transform flagship;
     [SerializeField] private float period;
     [SerializeField] private AnimationCurve curve;
 
@@ -93,9 +94,11 @@ public class test : MonoBehaviour
 
                 nextPosition = IntVector2.Down,
                 nextOrientation = 0,
-                
+
                 commanderSprite = commanderSprite,
                 flagshipSprite = flagshipSprite,
+
+                formation = formation,
             },
 
             new Fleet
@@ -108,11 +111,17 @@ public class test : MonoBehaviour
 
                 commanderSprite = commanderSprite,
                 flagshipSprite = flagshipSprite,
+
+                formation = formation,
             },
         };
 
 
-        foreach (var fleet in fleets_) fleet.formations[0] = formation;
+        foreach (Fleet fleet in fleets_)
+        {
+            fleet.ChooseFormation(formation, Random.Range(0, 6));
+        }
+
         fleets.SetActive(fleets_, sort: false);
 
         while (true)
@@ -135,7 +144,7 @@ public class test : MonoBehaviour
     }
 
     private float time;
-    private bool run;
+    private int run;
 
     public void RotateLeft()
     {
@@ -149,9 +158,14 @@ public class test : MonoBehaviour
 
     private void Update()
     {
-        if (Input.GetKeyDown(KeyCode.Return)) run = true;
+        if (Input.GetKeyDown(KeyCode.Return))
+        {
+            selected = null;
 
-        if (run)
+            run += 1;
+        }
+
+        if (run > 0)
         {
             time += Time.deltaTime / period;
 
@@ -166,13 +180,12 @@ public class test : MonoBehaviour
 
                     var n = HexGrid.Neighbours(fleet.position).ToArray();
 
-                    fleet.nextPosition = n[Random.Range(0, n.Length)];
-                    fleet.nextOrientation = rotation;
+                    fleet.ChooseFormation(formation, fleet.orientation);
                 }
 
                 time -= 1;
 
-                run = false;
+                run -= 1;
             }
 
             fleets.MapActive((f, v) =>
@@ -222,7 +235,8 @@ public class test : MonoBehaviour
             cursor = HexGrid.WorldToHex(cursorv);
 
             if (Input.GetMouseButtonDown(0) 
-             && !UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject())
+             && !UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject()
+             && run == 0)
             {
                 selected = fleets_.FirstOrDefault(fleet => fleet.position == cursor);
                 if (selected != null) menu.Setup(selected);
@@ -274,25 +288,51 @@ public class test : MonoBehaviour
 
         var colors = new Dictionary<Type, Color>
         {
-            { Type.Power, powerColor },
-            { Type.Weakness, weakColor },
+            { Type.Power,    powerColor    },
+            { Type.Weakness, weakColor     },
+            { Type.Conflict, conflictColor },
         };
 
-        var form = Rotated(formation, rotation);
-        if (edit) form = formation;
+        var allforms = fleets_.Where(fleet => fleet.formation != null)
+                              .Select(fleet => Translated(Rotated(fleet.formation, fleet.nextOrientation), fleet.position));
 
-        if (selected != null)
-        {
-            form = Translated(form, selected.position);
-        }
-        else if (!edit)
-        {
-            form.Clear();
-        }
+        { 
+            var current = new Formation();
 
-        hexes.SetActive(new[] { cursor }, sort: false);
-        projections.SetActive(form.Keys, sort: false);
-        projections.MapActive((c, v) => v.color = colors[form[c]]);
+            foreach (var formation in allforms)
+            {
+                foreach (var pair in formation)
+                {
+                    Type existing;
+
+                    if (current.TryGetValue(pair.Key, out existing))
+                    {
+                        bool conflict = (existing == Type.Power && pair.Value == Type.Weakness)
+                                     || (existing == Type.Weakness && pair.Value == Type.Power)
+                                     || existing == Type.Conflict;
+
+                        current[pair.Key] = conflict ? Type.Conflict : pair.Value;
+                    }
+                    else
+                    {
+                        current[pair.Key] = pair.Value;
+                    }
+                }
+            }
+
+            hexes.SetActive(new[] { cursor }, sort: false);
+
+            if (!edit)
+            {
+                projections.SetActive(current.Keys, sort: false);
+                projections.MapActive((c, v) => v.color = colors[current[c]]);
+            }
+            else
+            {
+                projections.SetActive(formation.Keys, sort: false);
+                projections.MapActive((c, v) => v.color = colors[formation[c]]);
+            }
+            }
 
         if (Input.GetKeyDown(KeyCode.Space))
         {
