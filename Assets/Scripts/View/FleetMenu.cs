@@ -34,15 +34,18 @@ public class FleetMenu : MonoBehaviour
     {
         var neighbours = HexGrid.Neighbours(IntVector2.Zero).ToArray();
 
-        for (int i = 0; i < neighbours.Length; ++i)
+        for (int i = 0; i < Mathf.Min(fleet.formations.Length, 6); ++i)
         {
-            if (fleet.formations[i] == null) continue;
+            Formation formation = fleet.formations[i];
+
+            if (formation == null) continue;
 
             yield return new HexItem
             {
                 cell = neighbours[i],
                 icon = fleet.flagshipSprite,
-                active = false,
+                active = true,
+                action = () => fleet.formation = formation,
             };
         }
     }
@@ -58,7 +61,9 @@ public class FleetMenu : MonoBehaviour
             action = SetFleet,
         };
 
-        icons.SetActive(new[] { command }.Concat(GetFormations()));
+        var things = GetFormations().ToArray();
+
+        icons.SetActive(new[] { command }.Concat(things));
     }
 
     public void SetFleet()

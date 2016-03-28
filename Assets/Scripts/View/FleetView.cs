@@ -97,4 +97,9 @@ public class Fleet
 
         nextPosition = HexGrid.Rotate(IntVector2.Up, orientation) + position;
     }
+
+    public Formation GetFormation()
+    {
+        return test.Translated(test.Rotated(formation, nextOrientation), position);
+    }
 }

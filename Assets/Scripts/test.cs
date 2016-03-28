@@ -36,6 +36,7 @@ public class test : MonoBehaviour
     [SerializeField] private FleetMenu menu;
     [SerializeField] private Sprite commanderSprite;
     [SerializeField] private Sprite flagshipSprite;
+    [SerializeField] private Sprite commanderSprite2;
 
     private MonoBehaviourPooler<IntVector2, HexView> hexes;
     private MonoBehaviourPooler<Projection, SpriteRenderer> projections;
@@ -43,12 +44,17 @@ public class test : MonoBehaviour
     private MonoBehaviourPooler<IntVector2, SpriteRenderer> visionRange;
     private MonoBehaviourPooler<Fleet, FleetView> fleets;
 
+    private Dictionary<IntVector2, Color> borderColors 
+        = new Dictionary<IntVector2, Color>();
+
     private class Projection
     {
         public IntVector2 cell;
         public Type type;
         public float mult;
     }
+
+    private List<Formation> formations = new List<Formation>();
 
     private void Awake()
     {
@@ -70,9 +76,18 @@ public class test : MonoBehaviour
 
         fleets = new MonoBehaviourPooler<Fleet, FleetView>(fleetPrefab, fleetParent, (f, v) => v.Setup(f));
 
-        string data = System.IO.File.ReadAllText(Application.streamingAssetsPath + "/formation.json.txt");
+        string path = Application.streamingAssetsPath;
 
-        formation = JsonWrapper.Deserialise<Formation>(data);
+        foreach (var file in System.IO.Directory.GetFiles(path))
+        {
+            if (!file.EndsWith(".txt")) continue;
+
+            string data = System.IO.File.ReadAllText(file);
+
+            formations.Add(JsonWrapper.Deserialise<Formation>(data));
+        }
+
+        formation = formations[0];
     }
 
     private HashSet<IntVector2> points = new HashSet<IntVector2>();
@@ -102,10 +117,11 @@ public class test : MonoBehaviour
                 nextPosition = IntVector2.Down,
                 nextOrientation = 0,
 
-                commanderSprite = commanderSprite,
+                commanderSprite = commanderSprite2,
                 flagshipSprite = flagshipSprite,
 
                 formation = formation,
+                formations = formations.ToArray(),
             },
 
             new Fleet
@@ -120,6 +136,7 @@ public class test : MonoBehaviour
                 flagshipSprite = flagshipSprite,
 
                 formation = formation,
+                formations = formations.ToArray(),
             },
         };
 
@@ -211,7 +228,17 @@ public class test : MonoBehaviour
         camera.worldCenter = points.Skip(1).Aggregate((a, b) => a + b) * (1f / points.Length);
         camera.worldRadius = points.Skip(1).SelectMany(x => points.Skip(1), (x, y) => new { a = x, b = y }).Max(g => (g.a - g.b).magnitude);
 
-        visions.Clear();
+        var highlight = fleets_.FirstOrDefault(fleet => fleet.position == cursor) ?? selected;
+
+        var colors = new Dictionary<Type, Color>
+        {
+            { Type.Power,    powerColor    },
+            { Type.Weakness, weakColor     },
+            { Type.Conflict, conflictColor },
+        };
+
+
+        borderColors.Clear();
 
         foreach (Vector3 point in points)
         {
@@ -219,21 +246,35 @@ public class test : MonoBehaviour
 
             foreach (IntVector2 cell in HexGrid.InRange(HexGrid.WorldToHex(point), 5))
             {
-                float alpha;
+                Color color;
 
-                if (!visions.TryGetValue(cell, out alpha))
+                if (!borderColors.TryGetValue(cell, out color))
                 {
-                    alpha = 0f;
+                    color = weakColor;
+                    color.a = 0f;
                 }
 
                 float current = (1 - (point - HexGrid.HexToWorld(cell)).magnitude / 4f) * 0.25f;
 
-                visions[cell] = Mathf.Max(alpha, current);
+                color.a = Mathf.Max(current, color.a);
+
+                borderColors[cell] = color;
             }
         }
 
-        vision.SetActive(visions.Keys, sort: false);
-        vision.MapActive((c, v) => { var co = v.color; co.a = visions[c]; v.color = co; } );
+        if (highlight != null)
+        {
+            foreach (var pair in highlight.GetFormation())
+            {
+                Color color = colors[pair.Value];
+                color.a = 1f;
+
+                borderColors[pair.Key] = color;
+            }
+        }
+
+        vision.SetActive(borderColors.Keys, sort: false);
+        vision.MapActive((c, v) => v.color = borderColors[c] );
 
         if (plane.Raycast(ray, out t))
         {
@@ -293,18 +334,8 @@ public class test : MonoBehaviour
             menu.transform.localPosition = HexGrid.HexToWorld(selected.position);
         }
 
-        var colors = new Dictionary<Type, Color>
-        {
-            { Type.Power,    powerColor    },
-            { Type.Weakness, weakColor     },
-            { Type.Conflict, conflictColor },
-        };
-
-        var highlight = fleets_.FirstOrDefault(fleet => fleet.position == cursor) ?? selected;
-
         var allforms = fleets_.Where(fleet => fleet.formation != null)
-                              .Select(fleet => new { form = Translated(Rotated(fleet.formation, fleet.nextOrientation), fleet.position), fleet = fleet })
-                              .SelectMany(pair => pair.form.Select(p => new Projection { cell = p.Key, type = p.Value, mult = pair.fleet == highlight ? 1 : 0.75f } ))
+                              .SelectMany(fleet => fleet.GetFormation().Select(p => new Projection { cell = p.Key, type = p.Value, mult = fleet == highlight ? 1 : 0.75f } ))
                               .ToArray();
 
         {
@@ -333,7 +364,7 @@ public class test : MonoBehaviour
         }
     }
 
-    private Formation Rotated(Formation formation, int rotation)
+    public static Formation Rotated(Formation formation, int rotation)
     {
         var rotated = new Formation();
 
@@ -345,7 +376,7 @@ public class test : MonoBehaviour
         return rotated;
     }
 
-    private Formation Translated(Formation formation, IntVector2 translation)
+    public static Formation Translated(Formation formation, IntVector2 translation)
     {
         var translated = new Formation();
 

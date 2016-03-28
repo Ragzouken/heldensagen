@@ -34,7 +34,7 @@ public class HexIcon : MonoBehaviour, IDragHandler
 
     private void Awake()
     {
-        button.onClick.AddListener(() => item.action());
+        button.onClick.AddListener(() => this.item.action());
     }
 
     private void Update()
