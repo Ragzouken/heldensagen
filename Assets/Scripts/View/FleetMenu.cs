@@ -40,12 +40,14 @@ public class FleetMenu : MonoBehaviour
 
             if (formation == null) continue;
 
+            int j = i;
+
             yield return new HexItem
             {
                 cell = neighbours[i],
                 icon = fleet.flagshipSprite,
                 active = true,
-                action = () => fleet.formation = formation,
+                action = () => { fleet.formation = formation; Debug.Log(j); },
             };
         }
     }
