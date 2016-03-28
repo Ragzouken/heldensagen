@@ -28,7 +28,7 @@ public class HexIcon : MonoBehaviour, IDragHandler
     public HexIcon parent;
     public Follow follow;
 
-    public test t;
+    public Fleet fleet;
 
     private HexItem item;
 
@@ -76,7 +76,7 @@ public class HexIcon : MonoBehaviour, IDragHandler
         float angle = Mathf.Atan2(vector.y, vector.x);
         int rotation = Mathf.RoundToInt(angle / (Mathf.PI * 2) * 6);
 
-        t.rotation = rotation;
+        fleet.ChooseFormation(fleet.formation, rotation);
     }
 }
 
