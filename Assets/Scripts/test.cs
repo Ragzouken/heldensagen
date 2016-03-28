@@ -204,7 +204,7 @@ public class test : MonoBehaviour
 
                     var n = HexGrid.Neighbours(fleet.position).ToArray();
 
-                    fleet.ChooseFormation(formation, fleet.orientation);
+                    fleet.ChooseFormation(fleet.formation, fleet.orientation);
                 }
 
                 time -= 1;

@@ -34,6 +34,8 @@ public class FleetMenu : MonoBehaviour
     {
         var neighbours = HexGrid.Neighbours(IntVector2.Zero).ToArray();
 
+        var list = new List<HexItem>();
+
         for (int i = 0; i < Mathf.Min(fleet.formations.Length, 6); ++i)
         {
             Formation formation = fleet.formations[i];
@@ -41,15 +43,18 @@ public class FleetMenu : MonoBehaviour
             if (formation == null) continue;
 
             int j = i;
+            float v = UnityEngine.Random.value;
 
-            yield return new HexItem
+            list.Add(new HexItem
             {
                 cell = neighbours[i],
                 icon = fleet.flagshipSprite,
                 active = true,
-                action = () => { fleet.formation = formation; Debug.Log(j); },
-            };
+                action = () => fleet.formation = formation,
+            });
         }
+
+        return list;
     }
 
     public void SetCommand()
