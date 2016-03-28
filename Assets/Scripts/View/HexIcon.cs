@@ -45,7 +45,16 @@ public class HexIcon : MonoBehaviour, IDragHandler
 
     void IDragHandler.OnDrag(PointerEventData eventData)
     {
-        Vector2 vector = eventData.position - eventData.pressPosition;
+        var plane = new Plane(Vector3.up, Vector3.zero);
+        Ray ray1 = eventData.pressEventCamera.ScreenPointToRay(eventData.position);
+        Ray ray2 = eventData.pressEventCamera.ScreenPointToRay(eventData.pressPosition);
+        float t1, t2;
+
+        plane.Raycast(ray1, out t1);
+        plane.Raycast(ray2, out t2);
+
+        Vector3 d = ray1.GetPoint(t1) - ray2.GetPoint(t2);
+        Vector2 vector = new Vector2(d.x, d.z);
 
         float angle = Mathf.Atan2(vector.y, vector.x);
         int rotation = Mathf.RoundToInt(angle / (Mathf.PI * 2) * 6);
