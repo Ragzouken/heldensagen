@@ -44,19 +44,19 @@ public class test : MonoBehaviour
     {
         hexes = new MonoBehaviourPooler<IntVector2, HexView>(hexPrefab,
                                                              hexParent,
-                                                             (c, v) => v.transform.position = HexGrid.HexToWorld(c));
+                                                             (c, v) => v.transform.localPosition = HexGrid.HexToWorld(c));
 
         projections = new MonoBehaviourPooler<IntVector2, SpriteRenderer>(projectionPrefab,
                                                                           hexParent,
-                                                                          (c, v) => { v.transform.position = HexGrid.HexToWorld(c); });
+                                                                          (c, v) => { v.transform.localPosition = HexGrid.HexToWorld(c); });
 
         vision = new MonoBehaviourPooler<IntVector2, SpriteRenderer>(visionPrefab,
                                                               hexParent,
-                                                              (c, v) => v.transform.position = HexGrid.HexToWorld(c));
+                                                              (c, v) => v.transform.localPosition = HexGrid.HexToWorld(c));
 
         visionRange = new MonoBehaviourPooler<IntVector2, SpriteRenderer>(projectionPrefab,
                                                               hexParent,
-                                                              (c, v) => { v.transform.position = HexGrid.HexToWorld(c); });
+                                                              (c, v) => { v.transform.localPosition = HexGrid.HexToWorld(c); });
 
         fleets = new MonoBehaviourPooler<Fleet, FleetView>(fleetPrefab, fleetParent, (f, v) => v.Setup(f));
 
@@ -175,11 +175,11 @@ public class test : MonoBehaviour
             });
         }
 
-        var plane = new Plane(Vector3.up, Vector3.zero);
+        var plane = new Plane(Vector3.up, Vector3.up * -0.5f);
         var ray = Camera.main.ScreenPointToRay(Input.mousePosition);
         float t;
 
-        var points = new [] { cursorv }.Concat(fleets.Instances.Select(fleet => fleet.transform.position)).ToArray();
+        var points = new [] { cursorv }.Concat(fleets.Instances.Select(fleet => fleet.transform.localPosition)).ToArray();
 
         camera.worldCenter = points.Skip(1).Aggregate((a, b) => a + b) * (1f / points.Length);
         camera.worldRadius = points.Skip(1).SelectMany(x => points.Skip(1), (x, y) => new { a = x, b = y }).Max(g => (g.a - g.b).magnitude);
