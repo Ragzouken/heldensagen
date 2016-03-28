@@ -106,7 +106,7 @@ public class test : MonoBehaviour
             },
         };
 
-        fleets.SetActive(fleets_);
+        fleets.SetActive(fleets_, sort: false);
 
         while (true)
         {
@@ -205,7 +205,7 @@ public class test : MonoBehaviour
             }
         }
 
-        vision.SetActive(visions.Keys);
+        vision.SetActive(visions.Keys, sort: false);
         vision.MapActive((c, v) => { var co = v.color; co.a = visions[c]; v.color = co; } );
 
         if (plane.Raycast(ray, out t))
