@@ -145,6 +145,9 @@ public class test : MonoBehaviour
         return fleet;
     }
 
+    private Dictionary<IntVector2, float> power = new Dictionary<IntVector2, float>();
+    private Dictionary<IntVector2, float> weak = new Dictionary<IntVector2, float>();
+
     private IEnumerator Start()
     {
         fleets_ = new Fleet[]
@@ -159,6 +162,7 @@ public class test : MonoBehaviour
 
         fleets.SetActive(fleets_, sort: false);
 
+        ComputeThreat();
 
         formations[4].orientationOffset = 3;
         while (true)
@@ -169,10 +173,12 @@ public class test : MonoBehaviour
             var currVision = new HashSet<IntVector2>(fleets_.SelectMany(f => HexGrid.InRange(f.position, f.visionRange)));
             var nextVision = new HashSet<IntVector2>(fleets_.SelectMany(f => HexGrid.InRange(f.nextPosition, f.visionRange)));
 
+            /*
             visionRange.SetActive(currVision.Concat(nextVision), sort: false);
             visionRange.MapActive((c, v) => v.color = Color.Lerp(currVision.Contains(c) ? visionColor : blank, 
                                                                  nextVision.Contains(c) ? visionColor : blank, 
                                                                  time));
+            */
 
             fleets.MapActive((f, v) => v.Refresh());
 
@@ -183,8 +189,129 @@ public class test : MonoBehaviour
     private float time;
     private int run;
 
-    private void Update()
+    private float Get(Dictionary<IntVector2, float> dict, IntVector2 cell)
     {
+        if (dict.ContainsKey(cell))
+            return dict[cell];
+
+        return 0f;
+    }
+
+    private void ComputeThreat()
+    {
+        int count = 0;
+
+        foreach (Fleet fleet in fleets_.Where(f => f.player == human))
+        {
+            foreach (IntVector2 position in Variations(fleet, Type.Power))
+            {
+                float power;
+
+                this.power.TryGetValue(position, out power);
+
+                this.power[position] = power + 1;
+
+                count += 1;
+            }
+
+            foreach (IntVector2 position in Variations(fleet, Type.Weakness))
+            {
+                float weak;
+
+                this.weak.TryGetValue(position, out weak);
+
+                this.weak[position] = weak + 1;
+
+                count -= 1;
+            }
+        }
+
+        {
+            float max = power.Max(p => p.Value);
+
+            foreach (IntVector2 cell in power.Keys.ToArray())
+            {
+                power[cell] /= max;
+            }
+
+            max = weak.Max(p => p.Value);
+
+            foreach (IntVector2 cell in weak.Keys.ToArray())
+            {
+                weak[cell] /= max;
+            }
+        }
+
+        foreach (Fleet fleet in fleets_.Where(f => f.player == cpu))
+        {
+            float max = -100;
+
+            foreach (Formation formation in fleet.formations)
+            {
+                for (int r = 0; r < 6; ++r)
+                {
+                    for (int f = 0; f < 2; ++f)
+                    {
+                        float value = Value(fleet, formation, r, f == 1);
+
+                        if (value > max)
+                        {
+                            fleet.flip = f == 1;
+                            fleet.ChooseFormation(formation, r);
+                            max = value;
+                        }
+                    }
+                }
+            }
+
+            if (max <= 0)
+            {
+                int d = HexGrid.Distance(fleet.position, fleets_[0].position);
+
+                for (int r = 0; r < 6; ++r)
+                {
+                    IntVector2 position = HexGrid.Rotate(IntVector2.Right, r) + fleet.position;
+
+                    if (HexGrid.Distance(position, fleets_[0].position) < d)
+                    {
+                        fleet.ChooseFormation(fleet.formations[0], r);
+                    }
+                }
+            }
+
+            Debug.Log(max);
+        }
+    }
+
+    private float Value(Fleet fleet, Formation formation, int r, bool f)
+    {
+        float threat = 0;
+        float opportunity = 0;
+
+        if (f) formation = Flipped(formation);
+                    
+        foreach (var pair in formation)
+        {
+            IntVector2 cell = HexGrid.Rotate(pair.Key, r) + fleet.position;
+
+            if (pair.Value == Type.Power)
+            {
+                opportunity += Get(weak, cell);
+            }
+            else if (pair.Value == Type.Weakness)
+            {
+                threat += Get(power, cell);
+            }
+        }
+
+        return opportunity - 0.5f * threat;
+    }
+
+    private void Update()
+    {        
+        visionRange.SetActive(power.Keys.Concat(weak.Keys), sort: true);
+        visionRange.MapActive((c, v) => v.color = (Color.red * Get(power, c) + Color.green * Get(weak, c)) * 0.5f);
+
         if (Input.GetKeyDown(KeyCode.Return))
         {
             selected = null;
@@ -213,6 +340,8 @@ public class test : MonoBehaviour
                 time -= 1;
 
                 run -= 1;
+
+                ComputeThreat();
             }
 
             fleets.MapActive((f, v) =>
@@ -378,6 +507,28 @@ public class test : MonoBehaviour
 
             System.IO.File.WriteAllText(Application.streamingAssetsPath + "/formation.json.txt", 
                                         JsonWrapper.Serialise(formation));
+        }
+    }
+
+    public IEnumerable<IntVector2> Variations(Fleet fleet,
+                                              Type type)
+    {
+        foreach (Formation formation in fleet.formations)
+        {
+            for (int r = 0; r < 6; ++r)
+            {
+                for (int f = 0; f < 2; ++f)
+                {
+                    Formation variant = formation;
+
+                    if (f == 1) variant = Flipped(variant);
+                    
+                    foreach (var pair in variant)
+                    {
+                        if (pair.Value == type) yield return HexGrid.Rotate(pair.Key, r) + fleet.position;
+                    }
+                }
+            }
         }
     }
 
