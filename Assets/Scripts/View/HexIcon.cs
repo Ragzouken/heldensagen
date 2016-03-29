@@ -25,6 +25,8 @@ public class HexIcon : MonoBehaviour, IDragHandler
 
     [SerializeField] private Button button;
 
+    [SerializeField] private AudioSource switchSound;
+
     public HexIcon parent;
     public Follow follow;
 
@@ -80,6 +82,8 @@ public class HexIcon : MonoBehaviour, IDragHandler
 
         float angle = Mathf.Atan2(vector.y, vector.x);
         int rotation = Mathf.RoundToInt(angle / (Mathf.PI * 2) * 6);
+
+        if (rotation != fleet.nextOrientation) switchSound.Play();
 
         fleet.ChooseFormation(fleet.formation, rotation);
     }

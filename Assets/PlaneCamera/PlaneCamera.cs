@@ -166,10 +166,13 @@ public class PlaneCamera : MonoBehaviour
         if (worldCircular)
         {
             Vector2 center = new Vector2(worldCenter.x, worldCenter.z);
+            Vector2 offset = focusTarget - center;
 
-            if ((focusTarget - center).magnitude > worldRadius)
+            if (offset.magnitude > worldRadius)
             {
-                focusTarget *= (worldRadius / (focusTarget - center).magnitude);
+                offset *= (worldRadius / offset.magnitude);
+
+                focusTarget = center + offset;
             }
         }
         else

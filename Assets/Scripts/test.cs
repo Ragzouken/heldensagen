@@ -237,8 +237,10 @@ public class test : MonoBehaviour
 
         var points = new [] { cursorv }.Concat(fleets.Instances.Select(fleet => fleet.transform.localPosition)).ToArray();
 
-        camera.worldCenter = points.Skip(1).Aggregate((a, b) => a + b) * (1f / points.Length);
+        camera.worldCenter = points.Skip(1).Aggregate((a, b) => a + b) * (1f / (points.Length - 1));
         camera.worldRadius = points.Skip(1).SelectMany(x => points.Skip(1), (x, y) => new { a = x, b = y }).Max(g => (g.a - g.b).magnitude);
+
+        camera.worldRadius = Mathf.Max(camera.worldRadius, 3);
 
         var highlight = fleets_.FirstOrDefault(fleet => fleet.position == cursor) ?? selected;
 
