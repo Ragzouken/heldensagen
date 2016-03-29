@@ -15,14 +15,24 @@ public class FleetView : MonoBehaviour
 
     private Fleet fleet;
 
+    private GameObject[] cloudInstances;
+
     private void Awake()
     {
-        foreach (Vector3 point in GetPointsOnSphere(clouds))
+        cloudInstances = new GameObject[clouds * 6];
+
+        int i = 0;
+
+        foreach (Vector3 point in GetPointsOnSphere(cloudInstances.Length))
         {
             var cloud = Instantiate(cloudPrefab, point * 0.5f, Quaternion.identity) as Transform;
 
             cloud.SetParent(transform, true);
             cloud.gameObject.SetActive(true);
+
+            cloudInstances[i] = cloud.gameObject;
+
+            i += 1;
         }
     }
 
@@ -44,7 +54,6 @@ public class FleetView : MonoBehaviour
 
     public void Refresh()
     {
-
         Vector3 currPos = HexGrid.HexToWorld(fleet.position);
         Vector3 nextPos = HexGrid.HexToWorld(fleet.nextPosition);
 
@@ -53,6 +62,16 @@ public class FleetView : MonoBehaviour
 
         transform.position =     Vector3.Lerp(currPos,   nextPos,   moveCurve.Evaluate(fleet.progress));
         transform.rotation = Quaternion.Slerp(currAngle, nextAngle, turnCurve.Evaluate(fleet.progress));
+
+        for (int i = 0; i < 6; ++i)
+        {
+            bool active = (i < fleet.squadrons.Length && fleet.squadrons[i] != null);
+
+            for (int c = 0; c < clouds; ++c)
+            {
+                cloudInstances[i * clouds + c].SetActive(active);
+            }
+        }
     }
 
     private IEnumerable<Vector3> GetPointsOnSphere(int nPoints)
@@ -100,7 +119,7 @@ public class Fleet
     public void ChooseFormation(Formation formation, int orientation)
     {
         this.formation = formation;
-        nextOrientation = orientation;
+        nextOrientation = orientation; //(orientation + formation.orientationOffset) % 6;
 
         nextPosition = HexGrid.Rotate(IntVector2.Up, orientation) + position;
     }

@@ -159,6 +159,8 @@ public class test : MonoBehaviour
 
         fleets.SetActive(fleets_, sort: false);
 
+
+        formations[4].orientationOffset = 3;
         while (true)
         {
             Color blank = visionColor;
@@ -407,6 +409,7 @@ public class test : MonoBehaviour
 [JsonArray]
 public class Formation : Dictionary<IntVector2, test.Type>
 {
+    public int orientationOffset;
     public static Sprite[] icons;
 };
 
