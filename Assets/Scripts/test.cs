@@ -381,6 +381,27 @@ public class test : MonoBehaviour
         }
     }
 
+    public static Formation Flipped(Formation formation)
+    {
+        var flipped = new Formation();
+
+        foreach (var pair in formation)
+        {
+            IntVector2 prev = pair.Key;
+            IntVector2 next = prev;
+            
+            if (prev.x != 0)
+            {
+                next.x = -prev.x;
+                next.y = -prev.z;
+            }
+
+            flipped[next] = pair.Value;
+        }
+
+        return flipped;
+    }
+
     public static Formation Rotated(Formation formation, int rotation)
     {
         var rotated = new Formation();

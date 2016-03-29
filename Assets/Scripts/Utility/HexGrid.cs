@@ -21,6 +21,14 @@ public struct IntVector2
     public static IntVector2 Up = new IntVector2(0, 1);
     public static IntVector2 Down = new IntVector2(0, -1);
 
+    public int z
+    {
+        get
+        {
+            return -x - y;
+        }
+    }
+
     public IntVector2(int x, int y)
     {
         this.x = x;

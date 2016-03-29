@@ -50,7 +50,7 @@ public class FleetMenu : MonoBehaviour
                 cell = neighbours[i],
                 icon = Formation.icons[i],
                 active = true,
-                action = () => fleet.formation = formation,
+                action = () => { fleet.formation = formation; fleet.flip = !fleet.flip; },
             });
         }
 

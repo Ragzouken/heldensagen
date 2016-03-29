@@ -115,6 +115,7 @@ public class Fleet
 
     public Formation[] formations = new Formation[6];
     public Formation formation;
+    public bool flip;
 
     public void ChooseFormation(Formation formation, int orientation)
     {
@@ -126,6 +127,10 @@ public class Fleet
 
     public Formation GetFormation()
     {
-        return test.Translated(test.Rotated(formation, nextOrientation), position);
+        var rotated = test.Rotated(formation, nextOrientation);
+
+        if (flip) rotated = test.Flipped(rotated);
+
+        return test.Translated(rotated, position);
     }
 }
