@@ -32,7 +32,7 @@ public class FleetMenu : MonoBehaviour
 
     private IEnumerable<HexItem> GetFormations()
     {
-        var neighbours = HexGrid.Neighbours(IntVector2.Zero).ToArray();
+        var neighbours = HexGrid.Neighbours(IntVector2.Zero).Reverse().ToArray();
 
         var list = new List<HexItem>();
 
@@ -48,7 +48,7 @@ public class FleetMenu : MonoBehaviour
             list.Add(new HexItem
             {
                 cell = neighbours[i],
-                icon = fleet.flagshipSprite,
+                icon = Formation.icons[i],
                 active = true,
                 action = () => fleet.formation = formation,
             });

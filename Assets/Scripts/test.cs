@@ -58,6 +58,8 @@ public class test : MonoBehaviour
 
     private List<Formation> formations = new List<Formation>();
 
+    public Sprite[] formationIcons;
+
     private void Awake()
     {
         hexes = new MonoBehaviourPooler<IntVector2, HexView>(hexPrefab,
@@ -90,6 +92,7 @@ public class test : MonoBehaviour
         }
 
         formation = new Formation();
+        Formation.icons = formationIcons;
     }
 
     private HashSet<IntVector2> points = new HashSet<IntVector2>();
@@ -111,7 +114,7 @@ public class test : MonoBehaviour
     {
         return new Squadron
         {
-            sprite = commanderSprite2,
+            sprite = flagshipSprite,
         };
     }
 
@@ -346,7 +349,7 @@ public class test : MonoBehaviour
             menu.transform.localPosition = HexGrid.HexToWorld(selected.position);
         }
 
-        var allforms = fleets_.Where(fleet => fleet.formation != null)
+        var allforms = fleets_.Where(fleet => fleet.formation != null && fleet.player == human)
                               .SelectMany(fleet => fleet.GetFormation().Select(p => new Projection { cell = p.Key, type = p.Value, mult = fleet == highlight ? 1 : 0.75f } ))
                               .ToArray();
 
@@ -402,7 +405,10 @@ public class test : MonoBehaviour
 }
 
 [JsonArray]
-public class Formation : Dictionary<IntVector2, test.Type> { };
+public class Formation : Dictionary<IntVector2, test.Type>
+{
+    public static Sprite[] icons;
+};
 
 [System.Serializable]
 public class Player
