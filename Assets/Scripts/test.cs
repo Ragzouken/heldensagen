@@ -38,6 +38,8 @@ public class test : MonoBehaviour
     [SerializeField] private Sprite flagshipSprite;
     [SerializeField] private Sprite commanderSprite2;
 
+    [SerializeField] private AudioSource selectSound;
+
     private MonoBehaviourPooler<IntVector2, HexView> hexes;
     private MonoBehaviourPooler<Projection, SpriteRenderer> projections;
     private MonoBehaviourPooler<IntVector2, SpriteRenderer> vision;
@@ -296,12 +298,24 @@ public class test : MonoBehaviour
 
             cursor = HexGrid.WorldToHex(cursorv);
 
+            bool previous = selected != null;
+
             if (Input.GetMouseButtonDown(0) 
              && !UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject()
              && run == 0)
             {
                 selected = fleets_.FirstOrDefault(fleet => fleet.position == cursor);
-                if (selected != null) menu.Setup(selected);
+
+                if (selected != null)
+                {
+                    menu.Setup(selected);
+
+                    selectSound.Play();
+                }
+                else if (previous)
+                {
+                    selectSound.Play();
+                }
             }
         }
 
