@@ -86,7 +86,7 @@ public class FleetMenu : MonoBehaviour
         {
             cell = IntVector2.Zero,
             active = true,
-            icon = fleet.commanderSprite,
+            icon = fleet.player.iconSprite,
 
             action = SetFleet,
         };

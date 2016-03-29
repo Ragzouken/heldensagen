@@ -89,7 +89,7 @@ public class test : MonoBehaviour
             formations.Add(JsonWrapper.Deserialise<Formation>(data));
         }
 
-        formation = formations[0];
+        formation = new Formation();
     }
 
     private HashSet<IntVector2> points = new HashSet<IntVector2>();
@@ -115,50 +115,44 @@ public class test : MonoBehaviour
         };
     }
 
+    public Player human;
+    public Player cpu;
+
+    private Fleet MakeFleet(IntVector2 position, Player owner)
+    {
+        var fleet = new Fleet
+        {
+            position = position,
+            orientation = 0,
+
+            nextPosition = position,
+            nextOrientation = 0,
+
+            player = owner,
+            flagshipSprite = flagshipSprite,
+
+            squadrons = Enumerable.Range(0, 3).Select(i => TestSquad()).ToArray(),
+
+            formation = formations[0],
+            formations = formations.ToArray(),
+        };
+
+        fleet.ChooseFormation(fleet.formation, fleet.orientation);
+
+        return fleet;
+    }
+
     private IEnumerator Start()
     {
         fleets_ = new Fleet[]
         {
-            new Fleet
-            {
-                position = IntVector2.Zero,
-                orientation = 1,
+            MakeFleet(IntVector2.Zero, human),
+            MakeFleet(new IntVector2(0, 2), human),
 
-                nextPosition = IntVector2.Down,
-                nextOrientation = 0,
-
-                commanderSprite = commanderSprite2,
-                flagshipSprite = flagshipSprite,
-
-                squadrons = Enumerable.Range(0, 3).Select(i => TestSquad()).ToArray(),
-
-                formation = formation,
-                formations = formations.ToArray(),
-            },
-
-            new Fleet
-            {
-                position = new IntVector2(5, 3),
-                orientation = 1,
-
-                nextPosition = new IntVector2(5, 3) + IntVector2.Left,
-                nextOrientation = 2,
-
-                commanderSprite = commanderSprite,
-                flagshipSprite = flagshipSprite,
-
-                squadrons = Enumerable.Range(0, 3).Select(i => TestSquad()).ToArray(),
-
-                formation = formation,
-                formations = formations.ToArray(),
-            },
+            MakeFleet(new IntVector2(5, 3), cpu),
+            MakeFleet(new IntVector2(7, 3), cpu),
+            MakeFleet(new IntVector2(9, 3), cpu),
         };
-
-
-        foreach (Fleet fleet in fleets_)
-        {
-            fleet.ChooseFormation(formation, Random.Range(0, 6));
-        }
 
         fleets.SetActive(fleets_, sort: false);
 
@@ -183,16 +177,6 @@ public class test : MonoBehaviour
 
     private float time;
     private int run;
-
-    public void RotateLeft()
-    {
-        rotation = (rotation - 1 + 6) % 6;
-    }
-
-    public void RotateRight()
-    { 
-        rotation = (rotation + 1 + 6) % 6;
-    }
 
     private void Update()
     {
@@ -419,3 +403,10 @@ public class test : MonoBehaviour
 
 [JsonArray]
 public class Formation : Dictionary<IntVector2, test.Type> { };
+
+[System.Serializable]
+public class Player
+{
+    public Sprite portraitSprite;
+    public Sprite iconSprite;
+}

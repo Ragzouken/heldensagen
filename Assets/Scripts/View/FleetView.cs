@@ -48,8 +48,8 @@ public class FleetView : MonoBehaviour
         Vector3 currPos = HexGrid.HexToWorld(fleet.position);
         Vector3 nextPos = HexGrid.HexToWorld(fleet.nextPosition);
 
-        var currAngle = Quaternion.AngleAxis(fleet.orientation     * 60, Vector3.up);
-        var nextAngle = Quaternion.AngleAxis(fleet.nextOrientation * 60, Vector3.up);
+        var currAngle = Quaternion.AngleAxis(fleet.orientation     * 60, -Vector3.up);
+        var nextAngle = Quaternion.AngleAxis(fleet.nextOrientation * 60, -Vector3.up);
 
         transform.position =     Vector3.Lerp(currPos,   nextPos,   moveCurve.Evaluate(fleet.progress));
         transform.rotation = Quaternion.Slerp(currAngle, nextAngle, turnCurve.Evaluate(fleet.progress));
@@ -89,7 +89,7 @@ public class Fleet
     public float progress;
     public int visionRange = 2;
 
-    public Sprite commanderSprite;
+    public Player player;
     public Sprite flagshipSprite;
 
     public Squadron[] squadrons = new Squadron[6];
