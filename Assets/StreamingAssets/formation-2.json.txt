@@ -1,57 +1,43 @@
 [
   {
     "Key": [
-      1,
-      -1
-    ],
-    "Value": "Weakness"
-  },
-  {
-    "Key": [
-      0,
-      2
-    ],
-    "Value": "Power"
-  },
-  {
-    "Key": [
-      0,
-      -1
-    ],
-    "Value": "Power"
-  },
-  {
-    "Key": [
       -1,
       0
     ],
-    "Value": "Weakness"
-  },
-  {
-    "Key": [
-      0,
-      1
-    ],
     "Value": "Power"
   },
   {
     "Key": [
-      -1,
-      1
+      1,
+      0
     ],
-    "Value": "Weakness"
+    "Value": "Power"
   },
   {
     "Key": [
       0,
       -2
     ],
+    "Value": "Weakness"
+  },
+  {
+    "Key": [
+      -1,
+      1
+    ],
     "Value": "Power"
   },
   {
     "Key": [
-      1,
-      0
+      0,
+      1
+    ],
+    "Value": "Power"
+  },
+  {
+    "Key": [
+      0,
+      -1
     ],
     "Value": "Weakness"
   }

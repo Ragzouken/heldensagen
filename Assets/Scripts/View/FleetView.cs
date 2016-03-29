@@ -127,10 +127,8 @@ public class Fleet
 
     public Formation GetFormation()
     {
-        var rotated = test.Rotated(formation, nextOrientation);
-
-        if (flip) rotated = test.Flipped(rotated);
-
-        return test.Translated(rotated, position);
+        var form = flip ? test.Flipped(formation) : formation;
+        
+        return test.Translated(test.Rotated(form, nextOrientation), position);
     }
 }
