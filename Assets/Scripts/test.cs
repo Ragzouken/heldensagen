@@ -38,6 +38,9 @@ public class test : MonoBehaviour
     [SerializeField] private Sprite flagshipSprite;
     [SerializeField] private Sprite commanderSprite2;
 
+    [SerializeField] private Sprite fighterSprite;
+    [SerializeField] private Sprite destroyerSprite;
+
     [SerializeField] private AudioSource selectSound;
 
     private MonoBehaviourPooler<IntVector2, HexView> hexes;
@@ -114,7 +117,7 @@ public class test : MonoBehaviour
     {
         return new Squadron
         {
-            sprite = flagshipSprite,
+            sprite = Random.value > 0.5f ? destroyerSprite : fighterSprite,
         };
     }
 
@@ -309,7 +312,7 @@ public class test : MonoBehaviour
 
     private void Update()
     {        
-        visionRange.SetActive(power.Keys.Concat(weak.Keys), sort: true);
+        //visionRange.SetActive(power.Keys.Concat(weak.Keys), sort: true);
         visionRange.MapActive((c, v) => v.color = (Color.red * Get(power, c) + Color.green * Get(weak, c)) * 0.5f);
 
         if (Input.GetKeyDown(KeyCode.Return))
