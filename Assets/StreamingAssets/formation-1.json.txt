@@ -4,55 +4,43 @@
       0,
       1
     ],
-    "Value": "Power"
+    "Value": {
+      "type": "Power",
+      "orientation": 0,
+      "move": true
+    }
   },
   {
     "Key": [
       0,
       2
     ],
-    "Value": "Power"
+    "Value": {
+      "type": "Power",
+      "orientation": 0,
+      "move": true
+    }
   },
   {
     "Key": [
-      -1,
+      0,
       3
     ],
-    "Value": "Power"
+    "Value": {
+      "type": "Power",
+      "orientation": 0,
+      "move": true
+    }
   },
   {
     "Key": [
-      -1,
-      2
-    ],
-    "Value": "Power"
-  },
-  {
-    "Key": [
-      -2,
-      3
-    ],
-    "Value": "Power"
-  },
-  {
-    "Key": [
-      1,
-      0
-    ],
-    "Value": "Weakness"
-  },
-  {
-    "Key": [
-      1,
-      1
-    ],
-    "Value": "Weakness"
-  },
-  {
-    "Key": [
-      1,
+      0,
       -1
     ],
-    "Value": "Weakness"
+    "Value": {
+      "type": "Weakness",
+      "orientation": 0,
+      "move": false
+    }
   }
 ]

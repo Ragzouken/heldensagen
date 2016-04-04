@@ -1,37 +1,101 @@
 [
   {
     "Key": [
-      0,
-      1
+      1,
+      0
     ],
-    "Value": "Weakness"
+    "Value": {
+      "type": "Power",
+      "orientation": -1,
+      "move": true
+    }
   },
   {
     "Key": [
       0,
       2
     ],
-    "Value": "Weakness"
+    "Value": {
+      "type": "Power",
+      "orientation": -1,
+      "move": true
+    }
+  },
+  {
+    "Key": [
+      -1,
+      0
+    ],
+    "Value": {
+      "type": "Weakness",
+      "orientation": 0,
+      "move": false
+    }
+  },
+  {
+    "Key": [
+      1,
+      -1
+    ],
+    "Value": {
+      "type": "Weakness",
+      "orientation": 0,
+      "move": false
+    }
   },
   {
     "Key": [
       0,
-      3
+      -1
     ],
-    "Value": "Power"
+    "Value": {
+      "type": "Weakness",
+      "orientation": 0,
+      "move": false
+    }
   },
   {
     "Key": [
       0,
-      4
+      1
     ],
-    "Value": "Power"
+    "Value": {
+      "type": "Power",
+      "orientation": 0,
+      "move": true
+    }
   },
   {
     "Key": [
-      0,
-      5
+      -1,
+      2
     ],
-    "Value": "Power"
+    "Value": {
+      "type": "Weakness",
+      "orientation": 0,
+      "move": false
+    }
+  },
+  {
+    "Key": [
+      -1,
+      1
+    ],
+    "Value": {
+      "type": "Weakness",
+      "orientation": 0,
+      "move": false
+    }
+  },
+  {
+    "Key": [
+      1,
+      1
+    ],
+    "Value": {
+      "type": "Power",
+      "orientation": -1,
+      "move": true
+    }
   }
 ]

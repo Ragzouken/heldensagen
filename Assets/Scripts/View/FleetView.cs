@@ -117,18 +117,22 @@ public class Fleet
     public Formation formation;
     public bool flip;
 
-    public void ChooseFormation(Formation formation, int orientation)
+    public void ChooseFormation(Formation formation, 
+                                int orientation)
     {
         this.formation = formation;
-        nextOrientation = orientation; //(orientation + formation.orientationOffset) % 6;
+        nextOrientation = orientation % 6; //(orientation + formation.orientationOffset) % 6;
 
-        nextPosition = HexGrid.Rotate(IntVector2.Up, orientation) + position;
+        nextPosition = position;
     }
 
     public Formation GetFormation()
     {
-        var form = flip ? test.Flipped(formation) : formation;
-        
-        return test.Translated(test.Rotated(form, nextOrientation), position);
+        return formation.Reoriented(position, orientation, flip);
+    }
+
+    public Formation GetNextFormation()
+    {
+        return formation.Reoriented(nextPosition, nextOrientation, flip);
     }
 }

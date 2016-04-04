@@ -48,7 +48,7 @@ public class FleetMenu : MonoBehaviour
             list.Add(new HexItem
             {
                 cell = neighbours[i],
-                icon = Formation.icons[i],
+                icon = Formation__.icons[i],
                 active = true,
                 action = () => { fleet.formation = formation; fleet.flip = !fleet.flip; },
             });

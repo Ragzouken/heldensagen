@@ -35,6 +35,14 @@ public class MonoBehaviourPooler<TShortcut, TInstance>
         }
     }
 
+    public IEnumerable<KeyValuePair<TShortcut, TInstance>> Pairs
+    {
+        get
+        {
+            foreach (var pair in instances) yield return pair;
+        }
+    }
+
     public MonoBehaviourPooler(TInstance prefab,
                                Transform parent=null,
                                Process initialize=null,
