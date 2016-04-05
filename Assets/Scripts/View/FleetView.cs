@@ -54,11 +54,11 @@ public class FleetView : MonoBehaviour
 
     public void Refresh()
     {
-        Vector3 currPos = HexGrid.HexToWorld(fleet.position);
-        Vector3 nextPos = HexGrid.HexToWorld(fleet.nextPosition);
+        Vector3 currPos = HexGrid.HexToWorld(fleet.prev.position);
+        Vector3 nextPos = HexGrid.HexToWorld(fleet.next.position);
 
-        var currAngle = Quaternion.AngleAxis(fleet.orientation     * 60, -Vector3.up);
-        var nextAngle = Quaternion.AngleAxis(fleet.nextOrientation * 60, -Vector3.up);
+        var currAngle = Quaternion.AngleAxis(fleet.prev.orientation * 60, -Vector3.up);
+        var nextAngle = Quaternion.AngleAxis(fleet.next.orientation * 60, -Vector3.up);
 
         transform.position =     Vector3.Lerp(currPos,   nextPos,   moveCurve.Evaluate(fleet.progress));
         transform.rotation = Quaternion.Slerp(currAngle, nextAngle, turnCurve.Evaluate(fleet.progress));
@@ -99,11 +99,35 @@ public class Squadron
 
 public class Fleet
 {
-    public IntVector2 position;
-    public int orientation;
+    public struct State
+    {
+        public Formation formation;
+        public IntVector2 position;
+        public int orientation;
+        public bool flip;
 
-    public IntVector2 nextPosition;
-    public int nextOrientation;
+        public Formation oriented
+        {
+            get
+            {
+                return formation.Reoriented(position, orientation, flip);
+            }
+        }
+
+        public State(Formation formation, 
+                     IntVector2 position,
+                     int orientation,
+                     bool flip)
+        {
+            this.formation = formation;
+            this.position = position;
+            this.orientation = orientation;
+            this.flip = flip;
+        }
+    }
+
+
+    public State prev, next;
 
     public float progress;
     public int visionRange = 2;
@@ -114,25 +138,4 @@ public class Fleet
     public Squadron[] squadrons = new Squadron[6];
 
     public Formation[] formations = new Formation[6];
-    public Formation formation;
-    public bool flip;
-
-    public void ChooseFormation(Formation formation, 
-                                int orientation)
-    {
-        this.formation = formation;
-        nextOrientation = orientation % 6; //(orientation + formation.orientationOffset) % 6;
-
-        nextPosition = position;
-    }
-
-    public Formation GetFormation()
-    {
-        return formation.Reoriented(position, orientation, flip);
-    }
-
-    public Formation GetNextFormation()
-    {
-        return formation.Reoriented(nextPosition, nextOrientation, flip);
-    }
 }

@@ -56,6 +56,10 @@ public class test : MonoBehaviour
     private MonoBehaviourPooler<IntVector2, SpriteRenderer> visionRange;
     private MonoBehaviourPooler<Fleet, FleetView> fleets;
 
+    
+    private MonoBehaviourPooler<Projection, HexView> prev;
+    private MonoBehaviourPooler<Projection, HexView> next;
+
     private Dictionary<IntVector2, Color> borderColors 
         = new Dictionary<IntVector2, Color>();
 
@@ -86,6 +90,10 @@ public class test : MonoBehaviour
                                                                                      Color.magenta));
 
         hover = new MonoBehaviourPooler<Projection, HexView>(projectionPrefab, hexParent);
+
+        prev = new MonoBehaviourPooler<Projection, HexView>(projectionPrefab, hexParent);
+        next = new MonoBehaviourPooler<Projection, HexView>(projectionPrefab, hexParent);
+
 
         vision = new MonoBehaviourPooler<IntVector2, SpriteRenderer>(visionPrefab,
                                                               hexParent,
@@ -141,23 +149,17 @@ public class test : MonoBehaviour
     {
         var fleet = new Fleet
         {
-            position = position,
-            orientation = 0,
-
-            nextPosition = position,
-            nextOrientation = 0,
+            prev = new Fleet.State(formations[0], position, 0, false),
+            next = new Fleet.State(formations[0], position, 0, false),
 
             player = owner,
             flagshipSprite = flagshipSprite,
 
             squadrons = Enumerable.Range(0, 3).Select(i => TestSquad()).ToArray(),
-
-            formation = formations[0],
+            
             formations = formations.ToArray(),
         };
-
-        fleet.ChooseFormation(fleet.formation, fleet.orientation);
-
+        
         return fleet;
     }
 
@@ -185,8 +187,8 @@ public class test : MonoBehaviour
             Color blank = visionColor;
             blank.a = 0;
 
-            var currVision = new HashSet<IntVector2>(fleets_.SelectMany(f => HexGrid.InRange(f.position, f.visionRange)));
-            var nextVision = new HashSet<IntVector2>(fleets_.SelectMany(f => HexGrid.InRange(f.nextPosition, f.visionRange)));
+            var currVision = new HashSet<IntVector2>(fleets_.SelectMany(f => HexGrid.InRange(f.prev.position, f.visionRange)));
+            var nextVision = new HashSet<IntVector2>(fleets_.SelectMany(f => HexGrid.InRange(f.next.position, f.visionRange)));
 
             /*
             visionRange.SetActive(currVision.Concat(nextVision), sort: false);
@@ -273,8 +275,7 @@ public class test : MonoBehaviour
 
                         if (value > max)
                         {
-                            fleet.flip = f == 1;
-                            fleet.ChooseFormation(formation, r);
+                            fleet.next = new Fleet.State(formation, fleet.prev.position, r, f == 1);
                             max = value;
                         }
                     }
@@ -283,15 +284,15 @@ public class test : MonoBehaviour
 
             if (max <= 0)
             {
-                int d = HexGrid.Distance(fleet.position, fleets_[0].position);
+                int d = HexGrid.Distance(fleet.prev.position, fleets_[0].prev.position);
 
                 for (int r = 0; r < 6; ++r)
                 {
-                    IntVector2 position = HexGrid.Rotate(IntVector2.Right, r) + fleet.position;
+                    IntVector2 position = HexGrid.Rotate(IntVector2.Right, r) + fleet.prev.position;
 
-                    if (HexGrid.Distance(position, fleets_[0].position) < d)
+                    if (HexGrid.Distance(position, fleets_[0].prev.position) < d)
                     {
-                        fleet.ChooseFormation(fleet.formations[0], r);
+                        fleet.next = new Fleet.State(fleet.formations[0], fleet.prev.position, r, false);
                     }
                 }
             }
@@ -307,7 +308,7 @@ public class test : MonoBehaviour
                     
         foreach (var pair in formation)
         {
-            IntVector2 cell = HexGrid.Rotate(pair.Key, r) + fleet.position;
+            IntVector2 cell = HexGrid.Rotate(pair.Key, r) + fleet.prev.position;
 
             if (pair.Value.type == Type.Power)
             {
@@ -328,7 +329,7 @@ public class test : MonoBehaviour
 
         foreach (Fleet fleet in fleets_)
         {
-            var colors = fleet.GetFormation()
+            var colors = fleet.next.oriented
                               .ToDictionary(p => p.Key, 
                                             p => p.Value.type == Type.Power ? powerColor * alpha 
                                                                             : weakColor  * alpha);
@@ -363,12 +364,7 @@ public class test : MonoBehaviour
 
                 foreach (Fleet fleet in fleets_)
                 {
-                    fleet.position = fleet.nextPosition;
-                    fleet.orientation = fleet.nextOrientation;
-
-                    var n = HexGrid.Neighbours(fleet.position).ToArray();
-
-                    fleet.ChooseFormation(fleet.formation, fleet.orientation);
+                    fleet.prev = fleet.next;
                 }
 
                 time -= 1;
@@ -398,7 +394,7 @@ public class test : MonoBehaviour
 
         camera.worldRadius = Mathf.Max(camera.worldRadius, 3);
 
-        var highlight = fleets_.FirstOrDefault(fleet => fleet.position == cursor) ?? selected;
+        var highlight = fleets_.FirstOrDefault(fleet => fleet.prev.position == cursor) ?? selected;
 
         var colors = new Dictionary<Type, Color>
         {
@@ -434,7 +430,7 @@ public class test : MonoBehaviour
 
         if (highlight != null && !edit)
         {
-            foreach (var pair in highlight.GetFormation())
+            foreach (var pair in highlight.prev.oriented)
             {
                 Color color = colors[pair.Value.type];
                 color.a = 1f;
@@ -459,7 +455,7 @@ public class test : MonoBehaviour
              && run == 0
              && !edit)
             {
-                selected = fleets_.FirstOrDefault(fleet => fleet.position == cursor);
+                selected = fleets_.FirstOrDefault(fleet => fleet.prev.position == cursor);
 
                 if (selected != null)
                 {
@@ -530,14 +526,14 @@ public class test : MonoBehaviour
             foreach (Fleet fleet in fleets_)
             {
                 Formation.Cell cell;
-                Formation formation = fleet.GetFormation();
-                Formation formreal = fleet.formation;
+                Formation formation = fleet.prev.oriented;
+                Formation formreal = fleet.prev.formation;
 
                 if (formation.TryGetValue(cursor, out cell) && cell.move)
                 {
                     int orientation = (6 - cell.orientation) % 6;
 
-                    Formation formhover = formreal.Reoriented(cursor, orientation, fleet.flip);
+                    Formation formhover = formreal.Reoriented(cursor, orientation, fleet.prev.flip);
 
                     hexes.AddRange(formhover.Select(p => new Projection
                     {
@@ -550,8 +546,10 @@ public class test : MonoBehaviour
 
                     if (Input.GetMouseButtonDown(0))// && fleet.player == human)
                     {
-                        fleet.nextPosition = cursor;
-                        fleet.nextOrientation = orientation;
+                        fleet.next = new Fleet.State(fleet.prev.formation,
+                                                     cursor,
+                                                     orientation,
+                                                     fleet.prev.flip);
                     }
                 }
             }
@@ -564,17 +562,61 @@ public class test : MonoBehaviour
                         p.move ? moveSprite : fillSprite,
                         colors[p.type] * p.mult * 1);
             });
+
+            var prevs = new List<Projection>();
+            var nexts = new List<Projection>();
+
+            foreach (Fleet fleet in fleets_)
+            {
+                prevs.AddRange(fleet.prev.oriented.Select(p => new Projection
+                {
+                    cell = p.Key,
+                    type = p.Value.type,
+                    mult = 1,
+                    move = p.Value.move,
+                    orientation = p.Value.orientation,
+                }));
+
+                if (fleet != selected) continue;
+
+                nexts.AddRange(fleet.next.oriented.Select(p => new Projection
+                {
+                    cell = p.Key,
+                    type = p.Value.type,
+                    mult = 1,
+                    move = p.Value.move,
+                    orientation = p.Value.orientation,
+                }));
+            }
+
+            prev.SetActive(prevs, sort: false);
+            prev.MapActive((p, v) =>
+            {
+                v.Setup(p.cell,
+                        p.orientation,
+                        p.move ? moveSprite : fillSprite,
+                        colors[p.type] * p.mult * 1);
+            });
+
+            next.SetActive(nexts, sort: false);
+            next.MapActive((p, v) =>
+            {
+                v.Setup(p.cell,
+                        p.orientation,
+                        p.move ? moveSprite : fillSprite,
+                        colors[p.type] * p.mult * 1);
+            });
         }
 
         menu.gameObject.SetActive(selected != null);
 
         if (selected != null)
         {
-            menu.transform.localPosition = HexGrid.HexToWorld(selected.position);
+            menu.transform.localPosition = HexGrid.HexToWorld(selected.prev.position);
         }
 
-        var allforms = fleets_.Where(fleet => fleet.formation != null)
-                              .SelectMany(fleet => fleet.GetFormation().Select(p => new Projection
+        var allforms = fleets_.Where(fleet => fleet.prev.formation != null)
+                              .SelectMany(fleet => fleet.prev.oriented.Select(p => new Projection
                               {
                                   cell = p.Key,
                                   type = p.Value.type,
@@ -638,7 +680,7 @@ public class test : MonoBehaviour
                     
                     foreach (var pair in variant)
                     {
-                        if (pair.Value.type == type) yield return HexGrid.Rotate(pair.Key, r) + fleet.position;
+                        if (pair.Value.type == type) yield return HexGrid.Rotate(pair.Key, r) + fleet.prev.position;
                     }
                 }
             }

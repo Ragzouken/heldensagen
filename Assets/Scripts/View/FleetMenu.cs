@@ -25,7 +25,7 @@ public class FleetMenu : MonoBehaviour
     {
         this.fleet = fleet;
 
-        transform.localPosition = HexGrid.HexToWorld(fleet.nextPosition);
+        transform.localPosition = HexGrid.HexToWorld(fleet.next.position);
 
         SetCommand();
     }
@@ -50,7 +50,11 @@ public class FleetMenu : MonoBehaviour
                 cell = neighbours[i],
                 icon = Formation__.icons[i],
                 active = true,
-                action = () => { fleet.formation = formation; fleet.flip = !fleet.flip; },
+                action = () => 
+                {
+                    fleet.next.formation = formation;
+                    fleet.next.flip = !fleet.next.flip;
+                },
             });
         }
 

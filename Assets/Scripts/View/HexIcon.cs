@@ -83,9 +83,9 @@ public class HexIcon : MonoBehaviour, IDragHandler
         float angle = Mathf.Atan2(vector.y, vector.x);
         int rotation = Mathf.RoundToInt(angle / (Mathf.PI * 2) * 6);
 
-        if (rotation != fleet.nextOrientation) switchSound.Play();
+        if (rotation != fleet.next.orientation) switchSound.Play();
 
-        fleet.ChooseFormation(fleet.formation, rotation);
+        fleet.next.orientation = rotation;
     }
 }
 
