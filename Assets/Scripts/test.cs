@@ -46,8 +46,10 @@ public class test : MonoBehaviour
 
     [SerializeField] private HexGridAnimator formationAnim;
 
+    [Header("Hex Sprites")]
     [SerializeField] private Sprite fillSprite;
     [SerializeField] private Sprite moveSprite;
+    [SerializeField] private Sprite moveSpriteLine;
 
     private MonoBehaviourPooler<IntVector2, HexView> hexes;
     private MonoBehaviourPooler<Projection, HexView> projections;
@@ -171,16 +173,18 @@ public class test : MonoBehaviour
         fleets_ = new Fleet[]
         {
             MakeFleet(IntVector2.Zero, human),
-            //MakeFleet(new IntVector2(0, 2), human),
+            MakeFleet(new IntVector2(0, 2), human),
 
             MakeFleet(new IntVector2(3, 3), cpu),
-            //MakeFleet(new IntVector2(7, 3), cpu),
-            //MakeFleet(new IntVector2(9, 3), cpu),
+            MakeFleet(new IntVector2(7, 3), cpu),
+            MakeFleet(new IntVector2(9, 3), cpu),
         };
 
         fleets.SetActive(fleets_, sort: false);
 
-        ComputeThreat();
+        ComputeThreat(human);
+            ComputeThreat(cpu);
+
 
         while (true)
         {
@@ -201,6 +205,7 @@ public class test : MonoBehaviour
 
             yield return null;
         }
+
     }
 
     private float time;
@@ -214,34 +219,30 @@ public class test : MonoBehaviour
         return 0f;
     }
 
-    private void ComputeThreat()
+    private void ComputeThreat(Player player)
     {
-        return;
-
-        int count = 0;
-
-        foreach (Fleet fleet in fleets_.Where(f => f.player == human))
+        foreach (Fleet fleet in fleets_.Where(f => f.player != player))
         {
-            foreach (IntVector2 position in Variations(fleet, Type.Power))
+            foreach (Fleet.State state in fleet.possibilities)
             {
-                float power;
+                foreach (var pair in state.oriented)
+                {
+                    IntVector2 position = pair.Key;
+                    Formation.Cell cell = pair.Value;
 
-                this.power.TryGetValue(position, out power);
-
-                this.power[position] = power + 1;
-
-                count += 1;
-            }
-
-            foreach (IntVector2 position in Variations(fleet, Type.Weakness))
-            {
-                float weak;
-
-                this.weak.TryGetValue(position, out weak);
-
-                this.weak[position] = weak + 1;
-
-                count -= 1;
+                    if (cell.type == Type.Power)
+                    {
+                        float power;
+                        this.power.TryGetValue(position, out power);
+                        this.power[position] = power + 1;
+                    }
+                    else if (cell.type == Type.Weakness)
+                    {
+                        float weak;
+                        this.weak.TryGetValue(position, out weak);
+                        this.weak[position] = weak + 1;
+                    }
+                }
             }
         }
 
@@ -261,66 +262,51 @@ public class test : MonoBehaviour
             }
         }
 
-        foreach (Fleet fleet in fleets_.Where(f => f.player == cpu))
+        var enemies = fleets_.Where(fleet => fleet.player != player);
+
+        IntVector2 center = enemies.Aggregate(IntVector2.Zero, (p, f) => p + f.prev.position)
+                          * (1f / enemies.Count());
+
+        foreach (Fleet fleet in fleets_.Where(f => f.player == player))
         {
-            float max = -100;
+            float opportunism = Random.value;
 
-            foreach (Formation formation in fleet.formations)
-            {
-                for (int r = 0; r < 6; ++r)
-                {
-                    for (int f = 0; f < 2; ++f)
-                    {
-                        float value = Value(fleet, formation, r, f == 1);
-
-                        if (value > max)
-                        {
-                            fleet.next = new Fleet.State(formation, fleet.prev.position, r, f == 1);
-                            max = value;
-                        }
-                    }
-                }
-            }
-
-            if (max <= 0)
-            {
-                int d = HexGrid.Distance(fleet.prev.position, fleets_[0].prev.position);
-
-                for (int r = 0; r < 6; ++r)
-                {
-                    IntVector2 position = HexGrid.Rotate(IntVector2.Right, r) + fleet.prev.position;
-
-                    if (HexGrid.Distance(position, fleets_[0].prev.position) < d)
-                    {
-                        fleet.next = new Fleet.State(fleet.formations[0], fleet.prev.position, r, false);
-                    }
-                }
-            }
+            fleet.next = fleet.possibilities.MaxBy(s => Value(s, opportunism) 
+                                                      - 0.5f * HexGrid.Distance(s.position, center)
+                                                      - 0.1f * Mathf.Abs((Orient(s.position, center) - s.orientation + 6) % 6));
         }
     }
 
-    private float Value(Fleet fleet, Formation formation, int r, bool f)
+    private int Orient(IntVector2 from, IntVector2 to)
+    {
+        IntVector2 d = to - from;
+
+        float angle = Mathf.Atan2(d.y, d.x);
+        int rotation = Mathf.RoundToInt(angle / (Mathf.PI * 2) * 6);
+
+        return rotation;
+    }
+
+    private float Value(Fleet.State state, float opportunism)
     {
         float threat = 0;
         float opportunity = 0;
 
-        if (f) formation = Flipped(formation);
-                    
+        var formation = state.oriented;
+
         foreach (var pair in formation)
         {
-            IntVector2 cell = HexGrid.Rotate(pair.Key, r) + fleet.prev.position;
-
             if (pair.Value.type == Type.Power)
             {
-                opportunity += Get(weak, cell);
+                opportunity += Get(weak, pair.Key);
             }
             else if (pair.Value.type == Type.Weakness)
             {
-                threat += Get(power, cell);
+                threat += Get(power, pair.Key);
             }
         }
 
-        return opportunity - 0.5f * threat;
+        return Mathf.Lerp(threat, opportunity, opportunism);
     }
 
     private IEnumerator FlashFormations()
@@ -371,9 +357,10 @@ public class test : MonoBehaviour
 
                 run -= 1;
 
-                ComputeThreat();
-
                 StartCoroutine(FlashFormations());
+
+                ComputeThreat(human);
+                ComputeThreat(cpu);
             }
 
             fleets.MapActive((f, v) =>
@@ -406,11 +393,13 @@ public class test : MonoBehaviour
 
         borderColors.Clear();
 
-        foreach (Vector3 point in points)
+        foreach (Vector3 point in points.Take(1))
         {
             //Vector3 point = cursorv;
 
-            foreach (IntVector2 cell in HexGrid.InRange(HexGrid.WorldToHex(point), 5))
+            int range = 3;
+
+            foreach (IntVector2 cell in HexGrid.InRange(HexGrid.WorldToHex(point), range))
             {
                 Color color;
 
@@ -420,7 +409,10 @@ public class test : MonoBehaviour
                     color.a = 0f;
                 }
 
-                float current = (1 - (point - HexGrid.HexToWorld(cell)).magnitude / 4f) * 0.25f;
+                float limit = range;
+                float distance = (point - HexGrid.HexToWorld(cell)).magnitude;
+
+                float current = (1 - distance / range) * 0.125f;
 
                 color.a = Mathf.Max(current, color.a);
 
@@ -428,19 +420,8 @@ public class test : MonoBehaviour
             }
         }
 
-        if (highlight != null && !edit)
-        {
-            foreach (var pair in highlight.prev.oriented)
-            {
-                Color color = colors[pair.Value.type];
-                color.a = 1f;
-
-                borderColors[pair.Key] = color;
-            }
-        }
-
-        //vision.SetActive(borderColors.Keys, sort: false);
-        //vision.MapActive((c, v) => v.color = borderColors[c] );
+        vision.SetActive(borderColors.Keys, sort: false);
+        vision.MapActive((c, v) => v.color = borderColors[c] );
 
         if (plane.Raycast(ray, out t))
         {
@@ -560,7 +541,8 @@ public class test : MonoBehaviour
                 v.Setup(p.cell,
                         p.orientation,
                         p.move ? moveSprite : fillSprite,
-                        colors[p.type] * p.mult * 1);
+                        colors[p.type] * p.mult * 1,
+                        scale: 0.95f);
             });
 
             var prevs = new List<Projection>();
@@ -568,14 +550,17 @@ public class test : MonoBehaviour
 
             foreach (Fleet fleet in fleets_)
             {
-                prevs.AddRange(fleet.prev.oriented.Select(p => new Projection
+                if (highlight == null || highlight == fleet)
                 {
-                    cell = p.Key,
-                    type = p.Value.type,
-                    mult = 1,
-                    move = p.Value.move,
-                    orientation = p.Value.orientation,
-                }));
+                    prevs.AddRange(fleet.prev.oriented.Select(p => new Projection
+                    {
+                        cell = p.Key,
+                        type = p.Value.type,
+                        mult = 1,
+                        move = p.Value.move,
+                        orientation = p.Value.orientation,
+                    }));
+                }
 
                 if (fleet != selected) continue;
 
@@ -594,8 +579,9 @@ public class test : MonoBehaviour
             {
                 v.Setup(p.cell,
                         p.orientation,
-                        p.move ? moveSprite : fillSprite,
-                        colors[p.type] * p.mult * 1);
+                        p.move ? moveSpriteLine : null,
+                        Color.white * 0.25f,
+                        scale: .9f);
             });
 
             next.SetActive(nexts, sort: false);
@@ -627,11 +613,11 @@ public class test : MonoBehaviour
                               .ToArray();
 
         {
-            hexes.SetActive(new[] { cursor }, sort: false);
+            //hexes.SetActive(new[] { cursor }, sort: false);
 
             if (!edit)
             {
-                projections.SetActive(allforms, sort: false);
+                projections.SetActive();
             }
             else
             {

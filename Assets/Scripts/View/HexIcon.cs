@@ -86,6 +86,7 @@ public class HexIcon : MonoBehaviour, IDragHandler
         if (rotation != fleet.next.orientation) switchSound.Play();
 
         fleet.next.orientation = rotation;
+        fleet.next.position = fleet.prev.position;
     }
 }
 

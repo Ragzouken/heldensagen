@@ -138,4 +138,35 @@ public class Fleet
     public Squadron[] squadrons = new Squadron[6];
 
     public Formation[] formations = new Formation[6];
+
+    public IEnumerable<State> possibilities
+    {
+        get
+        {
+            foreach (var pair in prev.oriented.Where(p => p.Value.move))
+            {
+                IntVector2 position = pair.Key;
+                Formation.Cell cell = pair.Value;
+
+                yield return new State(prev.formation, 
+                                       position, 
+                                       (6 - cell.orientation) % 6, 
+                                       prev.flip);
+            }
+
+            foreach (var formation in formations)
+            {
+                for (int r = 0; r < 6; ++r)
+                {
+                    for (int f = 0; f < 2; ++f)
+                    {
+                        yield return new State(formation,
+                                               prev.position,
+                                               r,
+                                               f == 1);
+                    }
+                }
+            }
+        }
+    }
 }

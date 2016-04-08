@@ -137,6 +137,14 @@ public struct IntVector2
 
         return a;
     }
+
+    public static IntVector2 operator *(IntVector2 a, float scale)
+    {
+        a.x = Mathf.RoundToInt(a.x * scale);
+        a.y = Mathf.RoundToInt(a.y * scale);
+
+        return a;
+    }
 }
 
 public static class HexGrid
