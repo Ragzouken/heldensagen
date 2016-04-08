@@ -19,8 +19,6 @@ public class test : MonoBehaviour
 
     [SerializeField] private PlaneCamera camera;
     [SerializeField] private Transform hexParent;
-    [SerializeField] private HexView hexPrefab;
-    [SerializeField] private SpriteRenderer visionPrefab;
 
     [SerializeField] private HexView projectionPrefab;
     [SerializeField] private Color powerColor;
@@ -51,13 +49,8 @@ public class test : MonoBehaviour
     [SerializeField] private Sprite moveSprite;
     [SerializeField] private Sprite moveSpriteLine;
 
-    private MonoBehaviourPooler<IntVector2, HexView> hexes;
-    private MonoBehaviourPooler<Projection, HexView> projections;
     private MonoBehaviourPooler<Projection, HexView> hover;
-    private MonoBehaviourPooler<IntVector2, SpriteRenderer> vision;
-    private MonoBehaviourPooler<IntVector2, SpriteRenderer> visionRange;
     private MonoBehaviourPooler<Fleet, FleetView> fleets;
-
     
     private MonoBehaviourPooler<Projection, HexView> prev;
     private MonoBehaviourPooler<Projection, HexView> next;
@@ -80,30 +73,9 @@ public class test : MonoBehaviour
 
     private void Awake()
     {
-        hexes = new MonoBehaviourPooler<IntVector2, HexView>(hexPrefab,
-                                                             hexParent,
-                                                             (c, v) => v.transform.localPosition = HexGrid.HexToWorld(c));
-
-        projections = new MonoBehaviourPooler<Projection, HexView>(projectionPrefab,
-                                                                   hexParent,
-                                                                   (p, v) => v.Setup(p.cell, 
-                                                                                     p.orientation, 
-                                                                                     null, 
-                                                                                     Color.magenta));
-
         hover = new MonoBehaviourPooler<Projection, HexView>(projectionPrefab, hexParent);
-
         prev = new MonoBehaviourPooler<Projection, HexView>(projectionPrefab, hexParent);
         next = new MonoBehaviourPooler<Projection, HexView>(projectionPrefab, hexParent);
-
-
-        vision = new MonoBehaviourPooler<IntVector2, SpriteRenderer>(visionPrefab,
-                                                              hexParent,
-                                                              (c, v) => v.transform.localPosition = HexGrid.HexToWorld(c));
-
-        visionRange = new MonoBehaviourPooler<IntVector2, SpriteRenderer>(visionPrefab,
-                                                              hexParent,
-                                                              (c, v) => { v.transform.localPosition = HexGrid.HexToWorld(c); });
 
         fleets = new MonoBehaviourPooler<Fleet, FleetView>(fleetPrefab, fleetParent, (f, v) => v.Setup(f));
 
@@ -118,7 +90,7 @@ public class test : MonoBehaviour
             formations.Add(JsonWrapper.Deserialise<Formation>(data));
         }
 
-        Formation__.icons = formationIcons;
+        Formation.icons = formationIcons;
     }
 
     private HashSet<IntVector2> points = new HashSet<IntVector2>();
@@ -330,9 +302,6 @@ public class test : MonoBehaviour
 
     private void Update()
     {        
-        //visionRange.SetActive(power.Keys.Concat(weak.Keys), sort: true);
-        visionRange.MapActive((c, v) => v.color = (Color.red * Get(power, c) + Color.green * Get(weak, c)) * 0.5f);
-
         if (Input.GetKeyDown(KeyCode.Return))
         {
             selected = null;
@@ -420,9 +389,6 @@ public class test : MonoBehaviour
             }
         }
 
-        vision.SetActive(borderColors.Keys, sort: false);
-        vision.MapActive((c, v) => v.color = borderColors[c] );
-
         if (plane.Raycast(ray, out t))
         {
             cursorv = ray.GetPoint(t);
@@ -499,6 +465,26 @@ public class test : MonoBehaviour
             {
                 cell.orientation = (cell.orientation + 1) % 6;
             }
+
+            var prevs = formation2.Select(pair => new Projection
+            {
+                cell = pair.Key,
+                type = pair.Value.type,
+                mult = 1,
+                orientation = pair.Value.orientation,
+                move = pair.Value.move,
+            });
+
+            next.SetActive();
+            prev.SetActive(prevs, sort: false);
+            prev.MapActive((p, v) =>
+            {
+                v.Setup(p.cell,
+                        p.orientation,
+                        p.move ? moveSprite : fillSprite,
+                        colors[p.type] * 0.75f,
+                        scale: .9f);
+            });
         }
         else
         {
@@ -601,75 +587,12 @@ public class test : MonoBehaviour
             menu.transform.localPosition = HexGrid.HexToWorld(selected.prev.position);
         }
 
-        var allforms = fleets_.Where(fleet => fleet.prev.formation != null)
-                              .SelectMany(fleet => fleet.prev.oriented.Select(p => new Projection
-                              {
-                                  cell = p.Key,
-                                  type = p.Value.type,
-                                  mult = fleet == highlight ? 1 : 0.75f,
-                                  move = p.Value.move,
-                                  orientation = p.Value.orientation,
-                              } ))
-                              .ToArray();
-
-        {
-            //hexes.SetActive(new[] { cursor }, sort: false);
-
-            if (!edit)
-            {
-                projections.SetActive();
-            }
-            else
-            {
-                var p = formation2.Select(pair => new Projection
-                {
-                    cell = pair.Key,
-                    type = pair.Value.type,
-                    mult = 1,
-                    orientation = pair.Value.orientation,
-                    move = pair.Value.move,
-                });
-
-                projections.SetActive(p, sort: false);
-            }
-
-            projections.MapActive((p, v) =>
-            {
-                v.Setup(p.cell, 
-                        p.orientation, 
-                        p.move ? moveSprite : fillSprite, 
-                        colors[p.type] * p.mult);
-            });
-        }
-
         if (Input.GetKeyDown(KeyCode.Space))
         {
             Debug.LogFormat("{0}", JsonWrapper.Serialise(formation2));
 
             System.IO.File.WriteAllText(Application.streamingAssetsPath + "/formation.json.txt", 
                                         JsonWrapper.Serialise(formation2));
-        }
-    }
-
-    public IEnumerable<IntVector2> Variations(Fleet fleet,
-                                              Type type)
-    {
-        foreach (Formation formation in fleet.formations)
-        {
-            for (int r = 0; r < 6; ++r)
-            {
-                for (int f = 0; f < 2; ++f)
-                {
-                    Formation variant = formation;
-
-                    if (f == 1) variant = Flipped(variant);
-                    
-                    foreach (var pair in variant)
-                    {
-                        if (pair.Value.type == type) yield return HexGrid.Rotate(pair.Key, r) + fleet.prev.position;
-                    }
-                }
-            }
         }
     }
 
@@ -732,15 +655,10 @@ public class test : MonoBehaviour
 }
 
 [JsonArray]
-public class Formation__ : Dictionary<IntVector2, test.Type>
-{
-    public int orientationOffset;
-    public static Sprite[] icons;
-};
-
-[JsonArray]
 public class Formation : Dictionary<IntVector2, Formation.Cell>
 {
+    public static Sprite[] icons;
+
     [JsonObject(IsReference = false)]
     public class Cell
     {
