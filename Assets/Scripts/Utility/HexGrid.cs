@@ -179,6 +179,17 @@ public static class HexGrid
         return Mathf.Max(Mathf.Abs(x), Mathf.Abs(y), Mathf.Abs(z));
     }
 
+    public static IntVector2 FlipX(IntVector2 hex)
+    {
+        if (hex.x != 0)
+        {
+            hex.y = -hex.z;
+            hex.x = -hex.x;
+        }
+
+        return hex;
+    }
+
     public static IntVector2 Rotate(IntVector2 hex, int hexes)
     {
         int x = hex.x;

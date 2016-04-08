@@ -9,21 +9,12 @@ using Newtonsoft.Json;
 
 public class test : MonoBehaviour 
 {
-    public enum Type
-    {
-        None,
-        Power,
-        Weakness,
-        Conflict,
-    }
-
     [SerializeField] private PlaneCamera camera;
     [SerializeField] private Transform hexParent;
 
     [SerializeField] private HexView projectionPrefab;
     [SerializeField] private Color powerColor;
     [SerializeField] private Color weakColor;
-    [SerializeField] private Color conflictColor;
     [SerializeField] private Color visionColor;
 
     [SerializeField] private float period;
@@ -61,7 +52,7 @@ public class test : MonoBehaviour
     private class Projection
     {
         public IntVector2 cell;
-        public Type type;
+        public Formation.Cell.Type type;
         public float mult;
         public bool move;
         public int orientation;
@@ -145,17 +136,17 @@ public class test : MonoBehaviour
         fleets_ = new Fleet[]
         {
             MakeFleet(IntVector2.Zero, human),
-            MakeFleet(new IntVector2(0, 2), human),
+            //MakeFleet(new IntVector2(0, 2), human),
 
             MakeFleet(new IntVector2(3, 3), cpu),
-            MakeFleet(new IntVector2(7, 3), cpu),
-            MakeFleet(new IntVector2(9, 3), cpu),
+            //MakeFleet(new IntVector2(7, 3), cpu),
+            //MakeFleet(new IntVector2(9, 3), cpu),
         };
 
         fleets.SetActive(fleets_, sort: false);
 
         ComputeThreat(human);
-            ComputeThreat(cpu);
+        ComputeThreat(cpu);
 
 
         while (true)
@@ -202,13 +193,13 @@ public class test : MonoBehaviour
                     IntVector2 position = pair.Key;
                     Formation.Cell cell = pair.Value;
 
-                    if (cell.type == Type.Power)
+                    if (cell.type == Formation.Cell.Type.Power)
                     {
                         float power;
                         this.power.TryGetValue(position, out power);
                         this.power[position] = power + 1;
                     }
-                    else if (cell.type == Type.Weakness)
+                    else if (cell.type == Formation.Cell.Type.Weakness)
                     {
                         float weak;
                         this.weak.TryGetValue(position, out weak);
@@ -268,11 +259,11 @@ public class test : MonoBehaviour
 
         foreach (var pair in formation)
         {
-            if (pair.Value.type == Type.Power)
+            if (pair.Value.type == Formation.Cell.Type.Power)
             {
                 opportunity += Get(weak, pair.Key);
             }
-            else if (pair.Value.type == Type.Weakness)
+            else if (pair.Value.type == Formation.Cell.Type.Weakness)
             {
                 threat += Get(power, pair.Key);
             }
@@ -287,10 +278,10 @@ public class test : MonoBehaviour
 
         foreach (Fleet fleet in fleets_)
         {
-            var colors = fleet.next.oriented
+            var colors = fleet.prev.oriented
                               .ToDictionary(p => p.Key, 
-                                            p => p.Value.type == Type.Power ? powerColor * alpha 
-                                                                            : weakColor  * alpha);
+                                            p => p.Value.type == Formation.Cell.Type.Power ? powerColor * alpha 
+                                                                                           : weakColor  * alpha);
 
             yield return StartCoroutine(formationAnim.FadeInColors(.5f, colors));
         }
@@ -352,11 +343,10 @@ public class test : MonoBehaviour
 
         var highlight = fleets_.FirstOrDefault(fleet => fleet.prev.position == cursor) ?? selected;
 
-        var colors = new Dictionary<Type, Color>
+        var colors = new Dictionary<Formation.Cell.Type, Color>
         {
-            { Type.Power,    powerColor    },
-            { Type.Weakness, weakColor     },
-            { Type.Conflict, conflictColor },
+            { Formation.Cell.Type.Power,    powerColor    },
+            { Formation.Cell.Type.Weakness, weakColor     },
         };
 
 
@@ -442,11 +432,13 @@ public class test : MonoBehaviour
             {
                 if (existing)
                 {
-                    cell.type = cell.type == Type.Power ? Type.Weakness : Type.Power;
+                    cell.type = cell.type == Formation.Cell.Type.Power ? Formation.Cell.Type.Weakness : Formation.Cell.Type.Power;
+
+                    formation2[cursor] = cell;
                 }
                 else
                 {
-                    formation2[cursor] = new Formation.Cell { type = Type.Power };
+                    formation2[cursor] = new Formation.Cell { type = Formation.Cell.Type.Power };
                 }
             }
             else if (Input.GetMouseButton(1))
@@ -456,14 +448,17 @@ public class test : MonoBehaviour
             else if (Input.GetKeyDown(KeyCode.M) && existing)
             {
                 cell.move = !cell.move;
+                formation2[cursor] = cell;
             }
             else if (Input.GetKeyDown(KeyCode.Comma) && existing)
             {
                 cell.orientation = (cell.orientation - 1) % 6;
+                formation2[cursor] = cell;
             }
             else if (Input.GetKeyDown(KeyCode.Period) && existing)
             {
                 cell.orientation = (cell.orientation + 1) % 6;
+                formation2[cursor] = cell;
             }
 
             var prevs = formation2.Select(pair => new Projection
@@ -493,14 +488,13 @@ public class test : MonoBehaviour
             foreach (Fleet fleet in fleets_)
             {
                 Formation.Cell cell;
-                Formation formation = fleet.prev.oriented;
-                Formation formreal = fleet.prev.formation;
 
-                if (formation.TryGetValue(cursor, out cell) && cell.move)
+                if (fleet.prev.oriented.TryGetValue(cursor, out cell) 
+                 && cell.move)
                 {
                     int orientation = (6 - cell.orientation) % 6;
 
-                    Formation formhover = formreal.Reoriented(cursor, orientation, fleet.prev.flip);
+                    Formation formhover = fleet.prev.formation.Reoriented(cursor, orientation, fleet.prev.flip);
 
                     hexes.AddRange(formhover.Select(p => new Projection
                     {
@@ -595,63 +589,6 @@ public class test : MonoBehaviour
                                         JsonWrapper.Serialise(formation2));
         }
     }
-
-    public static Formation Flipped(Formation formation)
-    {
-        var flipped = new Formation();
-
-        foreach (var pair in formation)
-        {
-            IntVector2 prev = pair.Key;
-            IntVector2 next = prev;
-            
-            if (prev.x != 0)
-            {
-                next.x = -prev.x;
-                next.y = -prev.z;
-            }
-
-            var cell = pair.Value;
-
-            flipped[next] = new Formation.Cell
-            {
-                move = cell.move,
-                type = cell.type,
-                orientation = 6 - cell.orientation,
-            };
-        }
-
-        return flipped;
-    }
-
-    public static Formation Rotated(Formation formation, int rotation)
-    {
-        var rotated = new Formation();
-
-        foreach (var pair in formation)
-        {
-            rotated[HexGrid.Rotate(pair.Key, rotation)] = new Formation.Cell
-            {
-                move = pair.Value.move,
-                orientation = (pair.Value.orientation + 6 - rotation) % 6,
-                type = pair.Value.type,
-            };
-        }
-
-        return rotated;
-    }
-
-    public static Formation Translated(Formation formation, IntVector2 translation)
-    {
-        var translated = new Formation();
-
-        foreach (var pair in formation)
-        {
-            translated[pair.Key + translation] = pair.Value;
-        }
-
-        return translated;
-    }
 }
 
 [JsonArray]
@@ -660,20 +597,45 @@ public class Formation : Dictionary<IntVector2, Formation.Cell>
     public static Sprite[] icons;
 
     [JsonObject(IsReference = false)]
-    public class Cell
+    public struct Cell
     {
-        public test.Type type;
+        public enum Type
+        {
+            None,
+            Power,
+            Weakness,
+        }
+
+        public Type type;
         public int orientation;
         public bool move;
     }
 
     public Formation Reoriented(IntVector2 position, 
                                 int orientation,
-                                bool flip=false)
+                                bool flip)
     {
-        var form = flip ? test.Flipped(this) : this;
+        var reoriented = new Formation();
+
+        foreach (var pair in this)
+        {
+            var hex  = pair.Key;
+            var cell = pair.Value;
+
+            hex = flip 
+                ? HexGrid.FlipX(hex) 
+                : hex;
+            hex = HexGrid.Rotate(hex, orientation)
+                + position;
+
+            if (flip) cell.orientation = 6 - cell.orientation;
+
+            cell.orientation = (cell.orientation + 6 - orientation) % 6;
+
+            reoriented[hex] = cell;
+        }
         
-        return test.Translated(test.Rotated(form, orientation), position);
+        return reoriented;
     }
 }
 
