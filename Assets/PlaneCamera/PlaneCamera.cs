@@ -24,7 +24,6 @@ public class PlaneCamera : MonoBehaviour
     public bool worldCircular;
     public Vector3 worldCenter;
     public float worldRadius;
-    public float depthRadiusFactor;
 
     [Header("Links")]
     public bool linkPivotToDepth;
@@ -160,8 +159,6 @@ public class PlaneCamera : MonoBehaviour
         if (angleTarget >  180) angleTarget -= 360;
         if (angleTarget < -180) angleTarget += 360;
         
-        if (worldCircular) maxDepth = worldRadius * depthRadiusFactor;
-
         pivotTarget = Mathf.Clamp(pivotTarget, minPivot, maxPivot);
         angleTarget = Mathf.Clamp(angleTarget, angleCenter - angleArc * 0.5f, angleCenter + angleArc * 0.5f);
         depthTarget = Mathf.Clamp(depthTarget, minDepth, maxDepth);

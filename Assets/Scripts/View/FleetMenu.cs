@@ -52,6 +52,7 @@ public class FleetMenu : MonoBehaviour
                 active = true,
                 action = () => 
                 {
+                    fleet.next.position = fleet.prev.position;
                     fleet.next.formation = formation;
                     fleet.next.flip = !fleet.next.flip;
                 },

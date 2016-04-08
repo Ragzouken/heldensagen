@@ -490,7 +490,8 @@ public class test : MonoBehaviour
                 Formation.Cell cell;
 
                 if (fleet.prev.oriented.TryGetValue(cursor, out cell) 
-                 && cell.move)
+                 && cell.move
+                 && selected == null)
                 {
                     int orientation = (6 - cell.orientation) % 6;
 
