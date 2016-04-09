@@ -9,6 +9,16 @@ using Newtonsoft.Json;
 
 public class test : MonoBehaviour 
 {
+    private enum State
+    {
+        None,
+        Edit,
+
+        Review,
+        Command,
+        Execute,
+    }
+    
     [SerializeField] private PlaneCamera camera;
     [SerializeField] private Transform hexParent;
 
@@ -68,6 +78,8 @@ public class test : MonoBehaviour
 
     public Sprite[] formationIcons;
 
+    private State state;
+
     private void Awake()
     {
         hover = new MonoBehaviourPooler<Projection, HexView>(projectionPrefab, hexParent);
@@ -96,7 +108,6 @@ public class test : MonoBehaviour
     private Formation formation2 = new Formation();
 
     private IntVector2 cursor;
-    public int rotation;
     private Vector3 cursorv;
 
     private bool edit;
@@ -139,7 +150,7 @@ public class test : MonoBehaviour
     private Dictionary<IntVector2, float> power = new Dictionary<IntVector2, float>();
     private Dictionary<IntVector2, float> weak = new Dictionary<IntVector2, float>();
 
-    private IEnumerator Start()
+    private void Start()
     {
         fleets_ = new Fleet[]
         {
@@ -156,31 +167,10 @@ public class test : MonoBehaviour
         ComputeThreat(human);
         ComputeThreat(cpu);
 
+        state = State.Command;
 
-        while (true)
-        {
-            Color blank = visionColor;
-            blank.a = 0;
-
-            var currVision = new HashSet<IntVector2>(fleets_.SelectMany(f => HexGrid.InRange(f.prev.position, f.visionRange)));
-            var nextVision = new HashSet<IntVector2>(fleets_.SelectMany(f => HexGrid.InRange(f.next.position, f.visionRange)));
-
-            /*
-            visionRange.SetActive(currVision.Concat(nextVision), sort: false);
-            visionRange.MapActive((c, v) => v.color = Color.Lerp(currVision.Contains(c) ? visionColor : blank, 
-                                                                 nextVision.Contains(c) ? visionColor : blank, 
-                                                                 time));
-            */
-
-            fleets.MapActive((f, v) => v.Refresh());
-
-            yield return null;
-        }
-
+        fleets.MapActive((f, v) => v.Refresh());
     }
-
-    private float time;
-    private int run;
 
     private float Get(Dictionary<IntVector2, float> dict, IntVector2 cell)
     {
@@ -347,88 +337,28 @@ public class test : MonoBehaviour
             }
         }
 
+        yield return StartCoroutine(formationAnim.FadeInColors(.5f, conflicts
+                                                                   .Values
+                                                                   .Where(c => c.valid)
+                                                                   .ToDictionary(c => c.cell, 
+                                                                                 c => Color.red * alpha * alpha)));
+
         this.conflicts.SetActive(conflicts.Values.Where(c => c.valid));
         this.conflicts.MapActive((c, h) => h.transform.localPosition = HexGrid.HexToWorld(c.cell));
-
-        foreach (Conflict conflict in conflicts.Values.Where(c => c.valid))
-        {
-            yield return StartCoroutine(formationAnim.FadeInColors(.5f, new Dictionary<IntVector2, Color>
-            {
-                { conflict.cell, Color.red * alpha * alpha },
-            }));
-
-            yield return new WaitForSeconds(0.5f);
-        }
-
-        yield return new WaitForSeconds(2);
-
-        //yield return StartCoroutine(formationAnim.FadeAndClear(.5f));
     }
 
-    private void Update()
-    {        
-        if (Input.GetKeyDown(KeyCode.Return))
-        {
-            selected = null;
+    private void UpdateCamera()
+    {
+        var points = fleets.Instances.Select(fleet => fleet.transform.localPosition).ToArray();
 
-            run += 1;
-        }
-
-        if (run > 0)
-        {
-            time += Time.deltaTime / period;
-
-            if (time > 1)
-            {
-                float u = time % 1;
-
-                foreach (Fleet fleet in fleets_)
-                {
-                    fleet.prev = fleet.next;
-                }
-
-                time -= 1;
-
-                run -= 1;
-
-                StartCoroutine(FlashFormations());
-
-                ComputeThreat(human);
-                ComputeThreat(cpu);
-            }
-
-            fleets.MapActive((f, v) =>
-            {
-                f.progress = time;
-                v.Refresh();
-            });
-        }
-
-        var plane = new Plane(Vector3.up, Vector3.zero);
-        var ray = Camera.main.ScreenPointToRay(Input.mousePosition);
-        float t;
-
-        var points = new [] { cursorv }.Concat(fleets.Instances.Select(fleet => fleet.transform.localPosition)).ToArray();
-
-        camera.worldCenter = points.Skip(1).Aggregate((a, b) => a + b) * (1f / (points.Length - 1));
-        camera.worldRadius = points.Skip(1).SelectMany(x => points.Skip(1), (x, y) => new { a = x, b = y }).Max(g => (g.a - g.b).magnitude);
-
+        camera.worldCenter = points.Aggregate((a, b) => a + b) * (1f / (points.Length - 1));
+        camera.worldRadius = points.SelectMany(x => points.Skip(1), (x, y) => new { a = x, b = y }).Max(g => (g.a - g.b).magnitude);
         camera.worldRadius = Mathf.Max(camera.worldRadius, 3);
 
-        var highlight = fleets_.FirstOrDefault(fleet => fleet.prev.position == cursor) ?? selected;
-
-        var colors = new Dictionary<Formation.Cell.Type, Color>
         {
-            { Formation.Cell.Type.Power,    powerColor },
-            { Formation.Cell.Type.Weakness, weakColor  },
-        };
+            borderColors.Clear();
 
-
-        borderColors.Clear();
-
-        foreach (Vector3 point in points.Take(1))
-        {
-            //Vector3 point = cursorv;
+            Vector3 point = cursorv;
 
             int range = 3;
 
@@ -452,174 +382,253 @@ public class test : MonoBehaviour
                 borderColors[cell] = color;
             }
         }
+    }
 
-        if (plane.Raycast(ray, out t))
+    private void UpdatePicking()
+    {
+        var plane = new Plane(Vector3.up, Vector3.zero);
+        var ray = Camera.main.ScreenPointToRay(Input.mousePosition);
+        float t;
+
+        plane.Raycast(ray, out t);
+
+        cursorv = ray.GetPoint(t);
+        cursor = HexGrid.WorldToHex(cursorv);
+
+        bool previous = selected != null;
+
+        if (Input.GetMouseButtonDown(0)
+            && !UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject())
         {
-            cursorv = ray.GetPoint(t);
+            selected = fleets_.FirstOrDefault(fleet => fleet.prev.position == cursor);
 
-            cursor = HexGrid.WorldToHex(cursorv);
-
-            bool previous = selected != null;
-
-            if (Input.GetMouseButtonDown(0) 
-             && !UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject()
-             && run == 0
-             && !edit)
+            if (selected != null)
             {
-                selected = fleets_.FirstOrDefault(fleet => fleet.prev.position == cursor);
+                menu.Setup(selected);
 
-                if (selected != null)
-                {
-                    menu.Setup(selected);
-
-                    selectSound.Play();
-                }
-                else if (previous)
-                {
-                    selectSound.Play();
-                }
+                selectSound.Play();
+            }
+            else if (previous)
+            {
+                selectSound.Play();
             }
         }
 
-        if (Input.GetKeyDown(KeyCode.Backslash))
+        menu.gameObject.SetActive(selected != null);
+
+        if (selected != null)
         {
-            edit = !edit;
+            menu.transform.localPosition = HexGrid.HexToWorld(selected.prev.position);
+        }
+    }
+
+    private void UpdateVision()
+    {
+        Color blank = visionColor;
+        blank.a = 0;
+
+        var currVision = new HashSet<IntVector2>(fleets_.SelectMany(f => HexGrid.InRange(f.prev.position, f.visionRange)));
+        var nextVision = new HashSet<IntVector2>(fleets_.SelectMany(f => HexGrid.InRange(f.next.position, f.visionRange)));
+
+        /*
+        visionRange.SetActive(currVision.Concat(nextVision), sort: false);
+        visionRange.MapActive((c, v) => v.color = Color.Lerp(currVision.Contains(c) ? visionColor : blank, 
+                                                             nextVision.Contains(c) ? visionColor : blank, 
+                                                             time));
+        */
+    }
+
+    private void Update()
+    {
+        UpdateCamera();
+        UpdatePicking();
+        UpdateVision();
+
+        if (state == State.Edit)
+        {
+            UpdateEdit();
+        }
+        else if (state == State.Review)
+        {
+            UpdateReview();
+        }
+        else if (state == State.Command)
+        {
+            UpdateCommand();
+        }
+        else if (state == State.Execute)
+        {
+        }
+    }
+
+    private void UpdateEdit()
+    {
+        var colors = new Dictionary<Formation.Cell.Type, Color>
+        {
+            { Formation.Cell.Type.Power,    powerColor },
+            { Formation.Cell.Type.Weakness, weakColor  },
+        };
+
+        if (Input.GetKeyDown(KeyCode.Space))
+        {
+            Debug.LogFormat("{0}", JsonWrapper.Serialise(formation2));
+
+            System.IO.File.WriteAllText(Application.streamingAssetsPath + "/formation.json.txt",
+                                        JsonWrapper.Serialise(formation2));
+        }
+        else if (Input.GetKeyDown(KeyCode.Backslash))
+        {
+            state = State.Command;
         }
 
-        if (Input.GetKeyDown(KeyCode.Comma))
+        Formation.Cell hovered;
+
+        bool existing = formation2.TryGetValue(cursor, out hovered);
+
+        if (Input.GetMouseButtonDown(0))
         {
-            rotation = (rotation - 1 + 6) % 6;
+            if (existing)
+            {
+                hovered.type = hovered.type == Formation.Cell.Type.Power ? Formation.Cell.Type.Weakness : Formation.Cell.Type.Power;
+
+                formation2[cursor] = hovered;
+            }
+            else
+            {
+                formation2[cursor] = new Formation.Cell { type = Formation.Cell.Type.Power };
+            }
+        }
+        else if (Input.GetMouseButton(1))
+        {
+            formation2.Remove(cursor);
+        }
+        else if (Input.GetKeyDown(KeyCode.M) && existing)
+        {
+            hovered.move = !hovered.move;
+            formation2[cursor] = hovered;
+        }
+        else if (Input.GetKeyDown(KeyCode.Comma) && existing)
+        {
+            hovered.orientation = (hovered.orientation - 1) % 6;
+            formation2[cursor] = hovered;
+        }
+        else if (Input.GetKeyDown(KeyCode.Period) && existing)
+        {
+            hovered.orientation = (hovered.orientation + 1) % 6;
+            formation2[cursor] = hovered;
         }
 
-        if (Input.GetKeyDown(KeyCode.Period))
+        var prevs = formation2.Select(pair => new Projection
         {
-            rotation = (rotation + 1 + 6) % 6;
+            cell = pair.Key,
+            type = pair.Value.type,
+            mult = 1,
+            orientation = pair.Value.orientation,
+            move = pair.Value.move,
+        });
+
+        next.SetActive();
+        prev.SetActive(prevs, sort: false);
+        prev.MapActive((p, v) =>
+        {
+            v.Setup(p.cell,
+                    p.orientation,
+                    p.move ? moveSprite : fillSprite,
+                    colors[p.type] * 0.75f,
+                    scale: .9f);
+        });
+    }
+
+    private void UpdateReview()
+    {
+        if (Input.GetKeyDown(KeyCode.Return))
+        {
+            state = State.Command;
+
+            StartCoroutine(formationAnim.FadeAndClear(.5f));
+            conflicts.SetActive();
         }
 
-        if (edit)
+        prev.SetActive();
+        next.SetActive();
+    }
+
+    private void UpdateCommand()
+    {
+        if (Input.GetKeyDown(KeyCode.Return))
+        {
+            state = State.Execute;
+
+            StartCoroutine(ExecuteCommands());
+
+            return;
+        }
+        else if (Input.GetKeyDown(KeyCode.Backslash))
+        {
+            state = State.Execute;
+
+            return;
+        }
+
+        var highlight = fleets_.FirstOrDefault(fleet => fleet.prev.position == cursor) ?? selected;
+
+        var colors = new Dictionary<Formation.Cell.Type, Color>
+        {
+            { Formation.Cell.Type.Power,    powerColor },
+            { Formation.Cell.Type.Weakness, weakColor  },
+        };
+
+        var hexes = new List<Projection>();
+
+        foreach (Fleet fleet in fleets_)
         {
             Formation.Cell cell;
 
-            bool existing = formation2.TryGetValue(cursor, out cell);
-
-            if (Input.GetMouseButtonDown(0))
+            if (fleet.prev.oriented.TryGetValue(cursor, out cell)
+                && cell.move
+                && selected == null)
             {
-                if (existing)
+                int orientation = (6 - cell.orientation) % 6;
+
+                Formation formhover = fleet.prev.formation.Reoriented(cursor, orientation, fleet.prev.flip);
+
+                hexes.AddRange(formhover.Select(p => new Projection
                 {
-                    cell.type = cell.type == Formation.Cell.Type.Power ? Formation.Cell.Type.Weakness : Formation.Cell.Type.Power;
+                    cell = p.Key,
+                    type = p.Value.type,
+                    mult = 1,
+                    move = p.Value.move,
+                    orientation = p.Value.orientation,
+                }));
 
-                    formation2[cursor] = cell;
-                }
-                else
+                if (Input.GetMouseButtonDown(0))// && fleet.player == human)
                 {
-                    formation2[cursor] = new Formation.Cell { type = Formation.Cell.Type.Power };
+                    fleet.next = new Fleet.State(fleet.prev.formation,
+                                                    cursor,
+                                                    orientation,
+                                                    fleet.prev.flip);
                 }
             }
-            else if (Input.GetMouseButton(1))
-            {
-                formation2.Remove(cursor);
-            }
-            else if (Input.GetKeyDown(KeyCode.M) && existing)
-            {
-                cell.move = !cell.move;
-                formation2[cursor] = cell;
-            }
-            else if (Input.GetKeyDown(KeyCode.Comma) && existing)
-            {
-                cell.orientation = (cell.orientation - 1) % 6;
-                formation2[cursor] = cell;
-            }
-            else if (Input.GetKeyDown(KeyCode.Period) && existing)
-            {
-                cell.orientation = (cell.orientation + 1) % 6;
-                formation2[cursor] = cell;
-            }
-
-            var prevs = formation2.Select(pair => new Projection
-            {
-                cell = pair.Key,
-                type = pair.Value.type,
-                mult = 1,
-                orientation = pair.Value.orientation,
-                move = pair.Value.move,
-            });
-
-            next.SetActive();
-            prev.SetActive(prevs, sort: false);
-            prev.MapActive((p, v) =>
-            {
-                v.Setup(p.cell,
-                        p.orientation,
-                        p.move ? moveSprite : fillSprite,
-                        colors[p.type] * 0.75f,
-                        scale: .9f);
-            });
         }
-        else
+
+        hover.SetActive(hexes, sort: false);
+        hover.MapActive((p, v) =>
         {
-            var hexes = new List<Projection>();
+            v.Setup(p.cell,
+                    p.orientation,
+                    p.move ? moveSprite : fillSprite,
+                    colors[p.type] * p.mult * 1,
+                    scale: 0.95f);
+        });
 
-            foreach (Fleet fleet in fleets_)
+        var prevs = new List<Projection>();
+        var nexts = new List<Projection>();
+
+        foreach (Fleet fleet in fleets_)
+        {
+            if (highlight == null || highlight == fleet)
             {
-                Formation.Cell cell;
-
-                if (fleet.prev.oriented.TryGetValue(cursor, out cell) 
-                 && cell.move
-                 && selected == null)
-                {
-                    int orientation = (6 - cell.orientation) % 6;
-
-                    Formation formhover = fleet.prev.formation.Reoriented(cursor, orientation, fleet.prev.flip);
-
-                    hexes.AddRange(formhover.Select(p => new Projection
-                    {
-                        cell = p.Key,
-                        type = p.Value.type,
-                        mult = 1,
-                        move = p.Value.move,
-                        orientation = p.Value.orientation,
-                    }));
-
-                    if (Input.GetMouseButtonDown(0))// && fleet.player == human)
-                    {
-                        fleet.next = new Fleet.State(fleet.prev.formation,
-                                                     cursor,
-                                                     orientation,
-                                                     fleet.prev.flip);
-                    }
-                }
-            }
-
-            hover.SetActive(hexes, sort: false);
-            hover.MapActive((p, v) =>
-            {
-                v.Setup(p.cell,
-                        p.orientation,
-                        p.move ? moveSprite : fillSprite,
-                        colors[p.type] * p.mult * 1,
-                        scale: 0.95f);
-            });
-
-            var prevs = new List<Projection>();
-            var nexts = new List<Projection>();
-
-            foreach (Fleet fleet in fleets_)
-            {
-                if (highlight == null || highlight == fleet)
-                {
-                    prevs.AddRange(fleet.prev.oriented.Select(p => new Projection
-                    {
-                        cell = p.Key,
-                        type = p.Value.type,
-                        mult = 1,
-                        move = p.Value.move,
-                        orientation = p.Value.orientation,
-                    }));
-                }
-
-                if (fleet != selected) continue;
-
-                nexts.AddRange(fleet.next.oriented.Select(p => new Projection
+                prevs.AddRange(fleet.prev.oriented.Select(p => new Projection
                 {
                     cell = p.Key,
                     type = p.Value.type,
@@ -629,40 +638,70 @@ public class test : MonoBehaviour
                 }));
             }
 
-            prev.SetActive(prevs, sort: false);
-            prev.MapActive((p, v) =>
+            if (fleet != highlight) continue;
+
+            nexts.AddRange(fleet.next.oriented.Select(p => new Projection
             {
-                v.Setup(p.cell,
-                        p.orientation,
-                        p.move ? moveSpriteLine : null,
-                        Color.white * 0.25f,
-                        scale: .9f);
-            });
-
-            next.SetActive(nexts, sort: false);
-            next.MapActive((p, v) =>
-            {
-                v.Setup(p.cell,
-                        p.orientation,
-                        p.move ? moveSprite : fillSprite,
-                        colors[p.type] * p.mult * 1);
-            });
+                cell = p.Key,
+                type = p.Value.type,
+                mult = 1,
+                move = p.Value.move,
+                orientation = p.Value.orientation,
+            }));
         }
 
-        menu.gameObject.SetActive(selected != null);
-
-        if (selected != null)
+        prev.SetActive(prevs, sort: false);
+        prev.MapActive((p, v) =>
         {
-            menu.transform.localPosition = HexGrid.HexToWorld(selected.prev.position);
-        }
+            v.Setup(p.cell,
+                    p.orientation,
+                    p.move ? moveSpriteLine : null,
+                    Color.white * 0.25f,
+                    scale: .9f);
+        });
 
-        if (Input.GetKeyDown(KeyCode.Space))
+        next.SetActive(nexts, sort: false);
+        next.MapActive((p, v) =>
         {
-            Debug.LogFormat("{0}", JsonWrapper.Serialise(formation2));
+            v.Setup(p.cell,
+                    p.orientation,
+                    p.move ? moveSprite : fillSprite,
+                    colors[p.type] * p.mult * 1);
+        });
+    }
 
-            System.IO.File.WriteAllText(Application.streamingAssetsPath + "/formation.json.txt", 
-                                        JsonWrapper.Serialise(formation2));
+    private IEnumerator ExecuteCommands()
+    {
+        state = State.Execute;
+        prev.SetActive();
+        next.SetActive();
+        hover.SetActive();
+
+        float u = 0;
+        float m = 1f / period;
+
+        while (u < 1)
+        {
+            fleets.MapActive((f, v) => v.Refresh(u));
+
+            yield return null;
+
+            u += Time.deltaTime * m;
         }
+
+        foreach (Fleet fleet in fleets_)
+        {
+            fleet.prev = fleet.next;
+        }
+
+        fleets.MapActive((f, v) => v.Refresh());
+
+        yield return StartCoroutine(FlashFormations());
+
+        ComputeThreat(human);
+        ComputeThreat(cpu);
+
+        state = State.Review;
     }
 }
 
