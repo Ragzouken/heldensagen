@@ -35,6 +35,8 @@ public class test : MonoBehaviour
 
     [SerializeField] private HexGridAnimator formationAnim;
 
+    [SerializeField] private ConflictView conflictPrefab;
+
     [Header("Hex Sprites")]
     [SerializeField] private Sprite fillSprite;
     [SerializeField] private Sprite moveSprite;
@@ -46,8 +48,12 @@ public class test : MonoBehaviour
     private MonoBehaviourPooler<Projection, HexView> prev;
     private MonoBehaviourPooler<Projection, HexView> next;
 
+    private MonoBehaviourPooler<Conflict, ConflictView> conflicts;
+
+    //private MonoBehaviourPooler<, >
+
     private Dictionary<IntVector2, Color> borderColors 
-        = new Dictionary<IntVector2, Color>();
+      = new Dictionary<IntVector2, Color>();
 
     private class Projection
     {
@@ -69,6 +75,8 @@ public class test : MonoBehaviour
         next = new MonoBehaviourPooler<Projection, HexView>(projectionPrefab, hexParent);
 
         fleets = new MonoBehaviourPooler<Fleet, FleetView>(fleetPrefab, fleetParent, (f, v) => v.Setup(f));
+
+        conflicts = new MonoBehaviourPooler<Conflict, ConflictView>(conflictPrefab, hexParent);
 
         string path = Application.streamingAssetsPath;
 
@@ -139,7 +147,7 @@ public class test : MonoBehaviour
             //MakeFleet(new IntVector2(0, 2), human),
 
             MakeFleet(new IntVector2(3, 3), cpu),
-            //MakeFleet(new IntVector2(7, 3), cpu),
+            MakeFleet(new IntVector2(7, 3), cpu),
             //MakeFleet(new IntVector2(9, 3), cpu),
         };
 
@@ -272,6 +280,34 @@ public class test : MonoBehaviour
         return Mathf.Lerp(threat, opportunity, opportunism);
     }
 
+    private class Conflict
+    {
+        public IntVector2 cell;
+        public HashSet<Fleet> attackers = new HashSet<Fleet>();
+        public HashSet<Fleet> defenders = new HashSet<Fleet>();
+
+        public bool valid
+        {
+            get
+            {
+                var p1 = attackers.Select(f => f.player).FirstOrDefault();
+
+                return p1 != null 
+                    && attackers.Concat(defenders).Any(f => f.player != p1);
+            }
+        }
+
+        public void Test()
+        {
+            var players = attackers.Concat(defenders)
+                         .Select(f => f.player)
+                         .Distinct()
+                         .ToArray();
+
+
+        }
+    }
+
     private IEnumerator FlashFormations()
     {
         Color alpha = new Color(1, 1, 1, 0.75f);
@@ -289,6 +325,44 @@ public class test : MonoBehaviour
         yield return new WaitForSeconds(2);
 
         yield return StartCoroutine(formationAnim.FadeAndClear(.5f));
+
+        var cells = fleets_.SelectMany(fleet => fleet.prev.oriented.Keys).ToArray();
+        var conflicts = cells.Distinct().ToDictionary(c => c, c => new Conflict { cell = c });
+        
+        foreach (Fleet fleet in fleets_)
+        {
+            foreach (var pair in fleet.prev.oriented)
+            {
+                Conflict conflict = conflicts[pair.Key];
+                Formation.Cell cell = pair.Value;
+
+                if (cell.type == Formation.Cell.Type.Power)
+                {
+                    conflict.attackers.Add(fleet);
+                }
+                else if (cell.type == Formation.Cell.Type.Weakness)
+                {
+                    conflict.defenders.Add(fleet);
+                }
+            }
+        }
+
+        this.conflicts.SetActive(conflicts.Values.Where(c => c.valid));
+        this.conflicts.MapActive((c, h) => h.transform.localPosition = HexGrid.HexToWorld(c.cell));
+
+        foreach (Conflict conflict in conflicts.Values.Where(c => c.valid))
+        {
+            yield return StartCoroutine(formationAnim.FadeInColors(.5f, new Dictionary<IntVector2, Color>
+            {
+                { conflict.cell, Color.red * alpha * alpha },
+            }));
+
+            yield return new WaitForSeconds(0.5f);
+        }
+
+        yield return new WaitForSeconds(2);
+
+        //yield return StartCoroutine(formationAnim.FadeAndClear(.5f));
     }
 
     private void Update()
@@ -345,8 +419,8 @@ public class test : MonoBehaviour
 
         var colors = new Dictionary<Formation.Cell.Type, Color>
         {
-            { Formation.Cell.Type.Power,    powerColor    },
-            { Formation.Cell.Type.Weakness, weakColor     },
+            { Formation.Cell.Type.Power,    powerColor },
+            { Formation.Cell.Type.Weakness, weakColor  },
         };
 
 
