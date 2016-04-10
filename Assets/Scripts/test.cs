@@ -47,6 +47,8 @@ public class test : MonoBehaviour
 
     [SerializeField] private ConflictView conflictPrefab;
 
+    [SerializeField] private Text tooltipText;
+
     [Header("Hex Sprites")]
     [SerializeField] private Sprite fillSprite;
     [SerializeField] private Sprite moveSprite;
@@ -164,8 +166,8 @@ public class test : MonoBehaviour
 
         fleets.SetActive(fleets_, sort: false);
 
-        ComputeThreat(human);
-        ComputeThreat(cpu);
+        //ComputeThreat(human);
+        //ComputeThreat(cpu);
 
         state = State.Command;
 
@@ -224,6 +226,8 @@ public class test : MonoBehaviour
         }
 
         var enemies = fleets_.Where(fleet => fleet.player != player);
+
+        if (!enemies.Any()) return;
 
         IntVector2 center = enemies.Aggregate(IntVector2.Zero, (p, f) => p + f.prev.position)
                           * (1f / enemies.Count());
@@ -315,6 +319,8 @@ public class test : MonoBehaviour
         }
     }
 
+    private Conflict[] conflictsValid;
+
     private IEnumerator FlashFormations()
     {
         Color alpha = new Color(1, 1, 1, 0.75f);
@@ -354,25 +360,26 @@ public class test : MonoBehaviour
             }
         }
 
-        var conflictsValid = conflicts.Values.Where(c => c.valid).ToArray();
+        conflictsValid = conflicts.Values.Where(c => c.valid).ToArray();
         var conflictCounts = fleets_.ToDictionary(f => f, f => conflictsValid.Count(c => c.Contains(f)));
-        var powerCounts    = fleets_.ToDictionary(f => f, f => conflictCounts[f] == 0 ? 0 : (f.ships / conflictCounts[f] * 0.5f));
+        var powerCounts = fleets_.ToDictionary(f => f, f => conflictCounts[f] == 0 ? 0 : (f.ships / conflictCounts[f] * 0.5f));
 
         foreach (Conflict conflict in conflictsValid)
         {
             foreach (Fleet fleet in conflict.fleets)
             {
-                int damage = Mathf.FloorToInt(conflict
-                                             .Attackers(fleet)
-                                             .Sum(f => powerCounts[f]));
+                bool weak = conflict.defenders.Contains(fleet);
+                int damage = conflict.Attackers(fleet).Count();
+
+                damage *= weak ? 3 : 1;
 
                 int prev = fleet.ships;
 
                 fleet.ships -= Mathf.FloorToInt(damage);
-
-                Debug.LogFormat("{0} damaged by {1} ({2} -> {3})", fleet, damage, prev, fleet.ships);
             }
         }
+
+        fleets_ = fleets_.Where(fleet => fleet.ships > 0).ToArray();
 
         yield return StartCoroutine(formationAnim.FadeInColors(.5f, conflicts
                                                                    .Values
@@ -388,8 +395,8 @@ public class test : MonoBehaviour
     {
         var points = fleets.Instances.Select(fleet => fleet.transform.localPosition).ToArray();
 
-        camera.worldCenter = points.Aggregate((a, b) => a + b) * (1f / (points.Length - 1));
-        camera.worldRadius = points.SelectMany(x => points.Skip(1), (x, y) => new { a = x, b = y }).Max(g => (g.a - g.b).magnitude);
+        camera.worldCenter = points.Aggregate((a, b) => a + b) * (1f / points.Length);
+        camera.worldRadius = points.SelectMany(x => points, (x, y) => new { a = x, b = y }).Max(g => (g.a - g.b).magnitude);
         camera.worldRadius = Mathf.Max(camera.worldRadius, 3);
 
         {
@@ -480,6 +487,8 @@ public class test : MonoBehaviour
         UpdateCamera();
         UpdatePicking();
         UpdateVision();
+
+        tooltipText.transform.parent.gameObject.SetActive(false);
 
         if (state == State.Edit)
         {
@@ -588,10 +597,37 @@ public class test : MonoBehaviour
 
         prev.SetActive();
         next.SetActive();
+
+        if (conflictsValid.Any(c => c.cell == cursor))
+        {
+            tooltipText.transform.parent.gameObject.SetActive(true);
+
+            Conflict conflict = conflictsValid.First(c => c.cell == cursor);
+
+            string text = "Conflict:";
+
+            foreach (Fleet attacker in conflict.attackers)
+            {
+                int damage = conflict.Attackers(attacker).Count();
+
+                text += string.Format("\n<color=orange>{0}'s Fleet Attacking! (-{1})</color>", attacker.player.name, damage);
+            }
+
+            foreach (Fleet defender in conflict.defenders)
+            {
+                int damage = conflict.Attackers(defender).Count() * 3;
+
+                text += string.Format("\n<color=red>{0}'s Fleet Defending! (-{1})</color>", defender.player.name, damage);
+            }
+
+            tooltipText.text = text;
+        }
     }
 
     private void UpdateCommand()
     {
+        fleets.SetActive(fleets_, sort: false);
+
         if (Input.GetKeyDown(KeyCode.Return))
         {
             state = State.Execute;
@@ -709,6 +745,8 @@ public class test : MonoBehaviour
 
     private IEnumerator ExecuteCommands()
     {
+        ComputeThreat(cpu);
+
         state = State.Execute;
         prev.SetActive();
         next.SetActive();
@@ -735,8 +773,8 @@ public class test : MonoBehaviour
 
         yield return StartCoroutine(FlashFormations());
 
-        ComputeThreat(human);
-        ComputeThreat(cpu);
+        //ComputeThreat(human);
+        //ComputeThreat(cpu);
 
         state = State.Review;
     }
@@ -793,6 +831,7 @@ public class Formation : Dictionary<IntVector2, Formation.Cell>
 [System.Serializable]
 public class Player
 {
+    public string name;
     public Sprite portraitSprite;
     public Sprite iconSprite;
 }
