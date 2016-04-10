@@ -282,19 +282,36 @@ public class test : MonoBehaviour
             {
                 var p1 = attackers.Select(f => f.player).FirstOrDefault();
 
-                return p1 != null 
+                return p1 != null
                     && attackers.Concat(defenders).Any(f => f.player != p1);
             }
         }
 
-        public void Test()
+        public bool Contains(Fleet fleet)
         {
-            var players = attackers.Concat(defenders)
-                         .Select(f => f.player)
-                         .Distinct()
-                         .ToArray();
+            return attackers.Contains(fleet)
+                || defenders.Contains(fleet);
+        }
 
+        public IEnumerable<Fleet> Attackers(Fleet fleet)
+        {
+            return attackers.Where(f => f.player != fleet.player);
+        }
 
+        public IEnumerable<Fleet> fleets
+        {
+            get
+            {
+                return attackers.Concat(defenders);
+            }
+        }
+
+        public IEnumerable<Player> players
+        {
+            get
+            {
+                return fleets.Select(f => f.player).Distinct();
+            }
         }
     }
 
@@ -334,6 +351,26 @@ public class test : MonoBehaviour
                 {
                     conflict.defenders.Add(fleet);
                 }
+            }
+        }
+
+        var conflictsValid = conflicts.Values.Where(c => c.valid).ToArray();
+        var conflictCounts = fleets_.ToDictionary(f => f, f => conflictsValid.Count(c => c.Contains(f)));
+        var powerCounts    = fleets_.ToDictionary(f => f, f => conflictCounts[f] == 0 ? 0 : (f.ships / conflictCounts[f] * 0.5f));
+
+        foreach (Conflict conflict in conflictsValid)
+        {
+            foreach (Fleet fleet in conflict.fleets)
+            {
+                int damage = Mathf.FloorToInt(conflict
+                                             .Attackers(fleet)
+                                             .Sum(f => powerCounts[f]));
+
+                int prev = fleet.ships;
+
+                fleet.ships -= Mathf.FloorToInt(damage);
+
+                Debug.LogFormat("{0} damaged by {1} ({2} -> {3})", fleet, damage, prev, fleet.ships);
             }
         }
 

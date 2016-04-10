@@ -130,6 +130,7 @@ public class Fleet
     public State prev, next;
 
     public int visionRange = 2;
+    public int ships = 8;
 
     public Player player;
     public Sprite flagshipSprite;
